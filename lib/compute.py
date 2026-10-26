@@ -132,17 +132,27 @@ def compute_headline_findings(df_filtered: pd.DataFrame) -> Dict[str, Any]:
             },
         }
 
-    # 1. Top theme excluding "Support not solving"
+    # 1. Top Continuation theme excluding "Support not solving", with Entry scope and Support amplifier
+    entry_mask = rel_df["scope"] == "Entry (before a SIP is running)"
+    entry_count = int(entry_mask.sum())
+    entry_pct = round((entry_count / n_relevant) * 100, 1) if n_relevant > 0 else 0.0
+
+    cont_mask = rel_df["scope"] == "Continuation"
+    cont_df = rel_df[cont_mask]
+    n_continuation = len(cont_df)
+
     support_mask = rel_df["theme"] == "Support not solving"
     support_count = int(support_mask.sum())
     support_pct = round((support_count / n_relevant) * 100, 1) if n_relevant > 0 else 0.0
 
-    non_support_df = rel_df[~support_mask]
-    if len(non_support_df) > 0:
-        theme_counts = non_support_df["theme"].value_counts()
+    cont_non_support = cont_df[cont_df["theme"] != "Support not solving"]
+    if len(cont_non_support) > 0:
+        theme_counts = cont_non_support["theme"].value_counts()
         top_theme_name = str(theme_counts.index[0])
         top_theme_count = int(theme_counts.iloc[0])
-        top_theme_pct = round((top_theme_count / n_relevant) * 100, 1)
+        top_theme_pct = (
+            round((top_theme_count / n_continuation) * 100, 1) if n_continuation > 0 else 0.0
+        )
     else:
         top_theme_name = "None"
         top_theme_count = 0
@@ -170,11 +180,17 @@ def compute_headline_findings(df_filtered: pd.DataFrame) -> Dict[str, Any]:
 
     return {
         "n_relevant": n_relevant,
+        "n_continuation": n_continuation,
         "top_theme": {
             "theme": top_theme_name,
             "count": top_theme_count,
             "pct": top_theme_pct,
-            "n": n_relevant,
+            "n": n_continuation,
+        },
+        "entry_scope": {
+            "count": entry_count,
+            "pct": entry_pct,
+            "n": entry_count,
         },
         "support_amplifier": {
             "count": support_count,
@@ -194,6 +210,7 @@ def compute_headline_findings(df_filtered: pd.DataFrame) -> Dict[str, Any]:
             "n": n_outcome_stated,
         },
     }
+
 
 
 def compute_theme_breakdown(df_filtered: pd.DataFrame) -> pd.DataFrame:

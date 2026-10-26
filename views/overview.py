@@ -105,17 +105,20 @@ def render_overview():
     with h_col1:
         st.markdown(
             f"""
-            <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 16px; background-color: #F8FAFC; min-height: 200px;">
+            <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 16px; background-color: #F8FAFC; min-height: 220px;">
                 <div style="font-size: 13px; font-weight: 600; color: #64748B; text-transform: uppercase;">
-                    Top Friction Theme <span style="background: #E2E8F0; color: #1E293B; padding: 2px 6px; border-radius: 4px; font-size: 11px;">n = {findings['top_theme']['n']}</span>
+                    Top Continuation Theme <span style="background: #E2E8F0; color: #1E293B; padding: 2px 6px; border-radius: 4px; font-size: 11px;">n = {findings['top_theme']['n']}</span>
                 </div>
                 <div style="font-size: 18px; font-weight: 700; color: #0F172A; margin: 8px 0 4px 0;">
                     {findings['top_theme']['theme']}
                 </div>
-                <div style="font-size: 14px; color: #334155; margin-bottom: 8px;">
-                    <b>{findings['top_theme']['count']:,}</b> mentions ({findings['top_theme']['pct']}% of relevant reviews)
+                <div style="font-size: 14px; color: #334155; margin-bottom: 6px;">
+                    <b>{findings['top_theme']['count']:,}</b> mentions ({findings['top_theme']['pct']}% of continuation)
                 </div>
-                <div style="font-size: 12px; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 6px;">
+                <div style="font-size: 12px; color: #0369A1; border-top: 1px solid #E2E8F0; padding-top: 6px; margin-bottom: 4px;">
+                    Entry scope: <b>{findings['entry_scope']['count']:,}</b> setup/autopay reviews ({findings['entry_scope']['pct']}%)
+                </div>
+                <div style="font-size: 12px; color: #64748B;">
                     Amplifier: <b>Support not solving</b> ({findings['support_amplifier']['count']:,} mentions, {findings['support_amplifier']['pct']}%)
                 </div>
             </div>
@@ -126,9 +129,9 @@ def render_overview():
     with h_col2:
         st.markdown(
             f"""
-            <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 16px; background-color: #F8FAFC; min-height: 200px;">
+            <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 16px; background-color: #F8FAFC; min-height: 220px;">
                 <div style="font-size: 13px; font-weight: 600; color: #64748B; text-transform: uppercase;">
-                    Dominant Root Cause <span style="background: #E2E8F0; color: #1E293B; padding: 2px 6px; border-radius: 4px; font-size: 11px;">n = {findings['top_cause']['n']}</span>
+                    Most-mentioned cause type (AI-labelled) <span style="background: #E2E8F0; color: #1E293B; padding: 2px 6px; border-radius: 4px; font-size: 11px;">n = {findings['top_cause']['n']}</span>
                 </div>
                 <div style="font-size: 18px; font-weight: 700; color: #0F172A; margin: 8px 0 4px 0;">
                     {findings['top_cause']['cause']}
@@ -143,6 +146,7 @@ def render_overview():
             """,
             unsafe_allow_html=True,
         )
+
 
     with h_col3:
         st.markdown(

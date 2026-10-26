@@ -93,19 +93,53 @@ def test_top_theme_excludes_support(full_df):
     """
     Headline Finding 1: Top theme must exclude 'Support not solving',
     and Support must be isolated as an amplifier with its own count and pct.
+    Scope must be 'Continuation'.
     """
     findings = compute_headline_findings(full_df)
     assert findings["top_theme"]["theme"] != "Support not solving"
     assert findings["top_theme"]["count"] > 0
-    assert findings["top_theme"]["n"] == (full_df["relevant_final"] == "Yes").sum()
+    rel_df = full_df[full_df["relevant_final"] == "Yes"]
+    expected_n_cont = (rel_df["scope"] == "Continuation").sum()
+    assert findings["top_theme"]["n"] == expected_n_cont
 
     # Support amplifier check
-    rel_df = full_df[full_df["relevant_final"] == "Yes"]
     expected_support_count = (rel_df["theme"] == "Support not solving").sum()
     assert findings["support_amplifier"]["count"] == expected_support_count
     assert findings["support_amplifier"]["pct"] == round(
         (expected_support_count / len(rel_df)) * 100, 1
     )
+
+
+def test_top_continuation_theme_by_period(full_df):
+    """
+    Headline Finding 1 Fix: Top theme among scope == 'Continuation',
+    excluding 'Support not solving'.
+    Expected:
+      All: 'Payment failed or missed' (118)
+      Before: 'Payment failed or missed' (99)
+      After: 'Cannot edit or pause or stop' (30)
+    """
+    # All
+    findings_all = compute_headline_findings(full_df)
+    assert findings_all["top_theme"]["theme"] == "Payment failed or missed"
+    assert findings_all["top_theme"]["count"] == 118
+    assert findings_all["entry_scope"]["count"] == (
+        (full_df["relevant_final"] == "Yes")
+        & (full_df["scope"] == "Entry (before a SIP is running)")
+    ).sum()
+
+    # Before 25 Dec 2024
+    before_df = apply_period_filter(full_df, PERIOD_BEFORE)
+    findings_before = compute_headline_findings(before_df)
+    assert findings_before["top_theme"]["theme"] == "Payment failed or missed"
+    assert findings_before["top_theme"]["count"] == 99
+
+    # After 25 Dec 2024
+    after_df = apply_period_filter(full_df, PERIOD_AFTER)
+    findings_after = compute_headline_findings(after_df)
+    assert findings_after["top_theme"]["theme"] == "Cannot edit or pause or stop"
+    assert findings_after["top_theme"]["count"] == 30
+
 
 
 def test_headline_findings_lost_rate_math(full_df):
@@ -213,3 +247,31 @@ def test_wishes_counts_and_split(full_df):
     assert wishes["before_count"] == expected_before
     assert wishes["after_count"] == expected_after
     assert wishes["before_count"] + wishes["after_count"] == 319
+
+
+def test_evidence_filters_change_count_at2(full_df):
+    """
+    Acceptance Test AT-2: Changing an Evidence filter changes the count.
+    """
+    total = len(full_df)
+    
+    # Filter by period
+    filtered_period = full_df[full_df["period"] == PERIOD_AFTER]
+    assert len(filtered_period) < total
+
+    # Filter by theme
+    filtered_theme = full_df[full_df["theme"] == "Payment failed or missed"]
+    assert len(filtered_theme) < total
+
+    # Filter by scope
+    filtered_scope = full_df[full_df["scope"] == "Entry (before a SIP is running)"]
+    assert len(filtered_scope) < total
+
+    # Combined filter
+    combined = full_df[
+        (full_df["period"] == PERIOD_AFTER)
+        & (full_df["theme"] == "Payment failed or missed")
+    ]
+    assert len(combined) < len(filtered_period)
+    assert len(combined) < len(filtered_theme)
+
