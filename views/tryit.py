@@ -94,10 +94,10 @@ def render_tryit():
             st.markdown(
                 f"""
                 <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px; background: #F8FAFC;">
-                    <div style="font-size: 11px; font-weight: 700; color: #64748B;">RELEVANCE & STAGE</div>
+                    <div style="font-size: 14px; font-weight: 700; color: #64748B;">RELEVANCE & STAGE</div>
                     <div style="font-size: 16px; font-weight: 700; color: #0F172A; margin: 4px 0;">{labels.get('relevant_final', 'No')}</div>
-                    <div style="font-size: 13px; color: #334155;"><b>Raw:</b> {labels.get('relevant', 'No')}</div>
-                    <div style="font-size: 13px; color: #334155;"><b>Stage:</b> {labels.get('stage', 'Not clear')}</div>
+                    <div style="font-size: 14px; color: #334155;"><b>Raw:</b> {labels.get('relevant', 'No')}</div>
+                    <div style="font-size: 14px; color: #334155;"><b>Stage:</b> {labels.get('stage', 'Not clear')}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -107,10 +107,10 @@ def render_tryit():
             st.markdown(
                 f"""
                 <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px; background: #F8FAFC;">
-                    <div style="font-size: 11px; font-weight: 700; color: #64748B;">FRICTION & CAUSE</div>
+                    <div style="font-size: 14px; font-weight: 700; color: #64748B;">FRICTION & CAUSE</div>
                     <div style="font-size: 16px; font-weight: 700; color: #0F172A; margin: 4px 0;">{displayed_issue}</div>
-                    <div style="font-size: 13px; color: #334155;"><b>Cause:</b> {labels.get('cause', 'Not clear')}</div>
-                    <div style="font-size: 13px; color: #334155;"><b>Break Type:</b> {labels.get('break_type', 'Not stated')}</div>
+                    <div style="font-size: 14px; color: #334155;"><b>Cause:</b> {labels.get('cause', 'Not clear')}</div>
+                    <div style="font-size: 14px; color: #334155;"><b>Break Type:</b> {labels.get('break_type', 'Not stated')}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -120,10 +120,10 @@ def render_tryit():
             st.markdown(
                 f"""
                 <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px; background: #F8FAFC;">
-                    <div style="font-size: 11px; font-weight: 700; color: #64748B;">OUTCOME & HYPOTHESIS</div>
+                    <div style="font-size: 14px; font-weight: 700; color: #64748B;">OUTCOME & HYPOTHESIS</div>
                     <div style="font-size: 16px; font-weight: 700; color: #0F172A; margin: 4px 0;">{labels.get('outcome_final', 'Unknown')}</div>
-                    <div style="font-size: 13px; color: #334155;"><b>Raw Outcome:</b> {labels.get('outcome', 'Unknown')}</div>
-                    <div style="font-size: 13px; color: #334155;"><b>Hypothesis:</b> {labels.get('hypothesis_final', 'None')} (directional)</div>
+                    <div style="font-size: 14px; color: #334155;"><b>Raw Outcome:</b> {labels.get('outcome', 'Unknown')}</div>
+                    <div style="font-size: 14px; color: #334155;"><b>Hypothesis:</b> {labels.get('hypothesis_final', 'None')} (directional)</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -132,13 +132,13 @@ def render_tryit():
         st.markdown(
             f"""
             <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 14px; margin-top: 14px; background: #FFFFFF;">
-                <div style="font-size: 13px; color: #1E293B; margin-bottom: 6px;">
+                <div style="font-size: 14px; color: #1E293B; margin-bottom: 6px;">
                     <b>Extracted Evidence:</b> <i>"{labels.get('evidence', 'None')}"</i>
                 </div>
-                <div style="font-size: 13px; color: #1E293B; margin-bottom: 6px;">
+                <div style="font-size: 14px; color: #1E293B; margin-bottom: 6px;">
                     <b>Key Insight:</b> {labels.get('insight', 'None')}
                 </div>
-                <div style="font-size: 12px; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 6px;">
+                <div style="font-size: 14px; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 6px;">
                     Controls mentioned: <b>{labels.get('controls_mentioned', 'None')}</b> &nbsp;|&nbsp; 
                     Workarounds: <b>{labels.get('workarounds', 'Not stated')}</b> &nbsp;|&nbsp; 
                     Income signal: <b>{labels.get('income_signal', 'Not stated')}</b>

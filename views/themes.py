@@ -203,14 +203,14 @@ def render_themes():
     for idx, hyp in enumerate(hypotheses):
         with hyp_cols[idx]:
             sample_tag = (
-                '<span style="background: #FEE2E2; color: #991B1B; padding: 2px 4px; border-radius: 4px; font-size: 10px;">small sample</span>'
+                '<span style="background: #FEE2E2; color: #991B1B; padding: 2px 4px; border-radius: 4px; font-size: 14px;">small sample</span>'
                 if hyp["is_small_sample"]
                 else ""
             )
             st.markdown(
                 f"""
                 <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px; background-color: #F8FAFC; min-height: 150px;">
-                    <div style="font-size: 11px; font-weight: 700; color: #0284C7; text-transform: uppercase;">
+                    <div style="font-size: 14px; font-weight: 700; color: #0284C7; text-transform: uppercase;">
                         Directional Label
                     </div>
                     <div style="font-size: 14px; font-weight: 700; color: #0F172A; margin: 4px 0;">
@@ -219,7 +219,7 @@ def render_themes():
                     <div style="font-size: 20px; font-weight: 700; color: #1E293B;">
                         {hyp['count']:,}
                     </div>
-                    <div style="font-size: 12px; color: #64748B;">
+                    <div style="font-size: 14px; color: #64748B;">
                         {hyp['pct']}% of relevant (n = {hyp['n']}) {sample_tag}
                     </div>
                 </div>
@@ -241,14 +241,14 @@ def render_themes():
     for idx, item in enumerate(break_types["items"]):
         with bt_cols[idx]:
             sample_badge = (
-                '<div style="font-size: 11px; color: #B91C1C; margin-top: 4px;">small sample, pattern only</div>'
+                '<div style="font-size: 14px; color: #B91C1C; margin-top: 4px;">small sample, pattern only</div>'
                 if item["is_small_sample"]
                 else ""
             )
             st.markdown(
                 f"""
                 <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 14px; background-color: #F8FAFC; min-height: 130px;">
-                    <div style="font-size: 12px; font-weight: 600; color: #475569; text-transform: uppercase;">
+                    <div style="font-size: 14px; font-weight: 600; color: #475569; text-transform: uppercase;">
                         Stated Break Type
                     </div>
                     <div style="font-size: 16px; font-weight: 700; color: #0F172A; margin: 4px 0;">
@@ -257,7 +257,7 @@ def render_themes():
                     <div style="font-size: 22px; font-weight: 700; color: #2563EB;">
                         {item['count']:,}
                     </div>
-                    <div style="font-size: 12px; color: #64748B;">
+                    <div style="font-size: 14px; color: #64748B;">
                         {item['pct']}% of stated breaks (n = {item['n']})
                     </div>
                     {sample_badge}

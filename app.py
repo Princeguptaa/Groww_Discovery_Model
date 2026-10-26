@@ -23,6 +23,35 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# Enforce minimum font size 14px everywhere and mobile responsiveness at 375px width (Spec §4 rule 2, §9 check 6)
+st.markdown(
+    """
+    <style>
+    html, body, p, span, label, input, select, textarea, .stCaption, small {
+        font-size: 14px !important;
+    }
+    .stCaption {
+        font-size: 14px !important;
+        color: #475569 !important;
+    }
+    @media (max-width: 480px) {
+        .block-container {
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+            padding-top: 1.5rem !important;
+        }
+        [data-testid="stMetricValue"] {
+            font-size: 1.4rem !important;
+        }
+        [data-testid="stMetricLabel"] {
+            font-size: 14px !important;
+        }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # Global session state initialization
 if "nav_radio" not in st.session_state:
     st.session_state["nav_radio"] = "Overview"

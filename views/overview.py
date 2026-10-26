@@ -106,8 +106,8 @@ def render_overview():
         st.markdown(
             f"""
             <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 16px; background-color: #F8FAFC; min-height: 220px;">
-                <div style="font-size: 13px; font-weight: 600; color: #64748B; text-transform: uppercase;">
-                    Top Continuation Theme <span style="background: #E2E8F0; color: #1E293B; padding: 2px 6px; border-radius: 4px; font-size: 11px;">n = {findings['top_theme']['n']}</span>
+                <div style="font-size: 14px; font-weight: 600; color: #64748B; text-transform: uppercase;">
+                    Top Continuation Theme <span style="background: #E2E8F0; color: #1E293B; padding: 2px 6px; border-radius: 4px; font-size: 14px;">n = {findings['top_theme']['n']}</span>
                 </div>
                 <div style="font-size: 18px; font-weight: 700; color: #0F172A; margin: 8px 0 4px 0;">
                     {findings['top_theme']['theme']}
@@ -115,10 +115,10 @@ def render_overview():
                 <div style="font-size: 14px; color: #334155; margin-bottom: 6px;">
                     <b>{findings['top_theme']['count']:,}</b> mentions ({findings['top_theme']['pct']}% of continuation)
                 </div>
-                <div style="font-size: 12px; color: #0369A1; border-top: 1px solid #E2E8F0; padding-top: 6px; margin-bottom: 4px;">
+                <div style="font-size: 14px; color: #0369A1; border-top: 1px solid #E2E8F0; padding-top: 6px; margin-bottom: 4px;">
                     Entry scope: <b>{findings['entry_scope']['count']:,}</b> setup/autopay reviews ({findings['entry_scope']['pct']}%)
                 </div>
-                <div style="font-size: 12px; color: #64748B;">
+                <div style="font-size: 14px; color: #64748B;">
                     Amplifier: <b>Support not solving</b> ({findings['support_amplifier']['count']:,} mentions, {findings['support_amplifier']['pct']}%)
                 </div>
             </div>
@@ -130,8 +130,8 @@ def render_overview():
         st.markdown(
             f"""
             <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 16px; background-color: #F8FAFC; min-height: 220px;">
-                <div style="font-size: 13px; font-weight: 600; color: #64748B; text-transform: uppercase;">
-                    Most-mentioned cause type (AI-labelled) <span style="background: #E2E8F0; color: #1E293B; padding: 2px 6px; border-radius: 4px; font-size: 11px;">n = {findings['top_cause']['n']}</span>
+                <div style="font-size: 14px; font-weight: 600; color: #64748B; text-transform: uppercase;">
+                    Most-mentioned cause type (AI-labelled) <span style="background: #E2E8F0; color: #1E293B; padding: 2px 6px; border-radius: 4px; font-size: 14px;">n = {findings['top_cause']['n']}</span>
                 </div>
                 <div style="font-size: 18px; font-weight: 700; color: #0F172A; margin: 8px 0 4px 0;">
                     {findings['top_cause']['cause']}
@@ -139,7 +139,7 @@ def render_overview():
                 <div style="font-size: 14px; color: #334155;">
                     <b>{findings['top_cause']['count']:,}</b> occurrences ({findings['top_cause']['pct']}% of relevant reviews)
                 </div>
-                <div style="font-size: 12px; color: #64748B; margin-top: 10px;">
+                <div style="font-size: 14px; color: #64748B; margin-top: 10px;">
                     Primary structural driver identified across user complaints in this period.
                 </div>
             </div>
@@ -147,21 +147,20 @@ def render_overview():
             unsafe_allow_html=True,
         )
 
-
     with h_col3:
         st.markdown(
             f"""
             <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 16px; background-color: #F8FAFC; min-height: 200px;">
-                <div style="font-size: 13px; font-weight: 600; color: #64748B; text-transform: uppercase;">
-                    Lost Continuation Rate <span style="background: #E2E8F0; color: #1E293B; padding: 2px 6px; border-radius: 4px; font-size: 11px;">n = {findings['lost_rate']['n']}</span>
+                <div style="font-size: 14px; font-weight: 600; color: #64748B; text-transform: uppercase;">
+                    Lost Continuation Rate <span style="background: #E2E8F0; color: #1E293B; padding: 2px 6px; border-radius: 4px; font-size: 14px;">n = {findings['lost_rate']['n']}</span>
                 </div>
                 <div style="font-size: 26px; font-weight: 700; color: #DC2626; margin: 8px 0 4px 0;">
                     {findings['lost_rate']['rate_pct']}%
                 </div>
-                <div style="font-size: 13px; color: #334155;">
+                <div style="font-size: 14px; color: #334155;">
                     <b>{findings['lost_rate']['lost_count']:,}</b> of {findings['lost_rate']['n_outcome_stated']:,} stated outcomes
                 </div>
-                <div style="font-size: 12px; color: #64748B; margin-top: 6px;">
+                <div style="font-size: 14px; color: #64748B; margin-top: 6px;">
                     Resulted in stopped/cancelled, switched away, or stalled not by choice.
                 </div>
             </div>

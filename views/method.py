@@ -47,9 +47,9 @@ def render_method():
         st.markdown(
             f"""
             <div style="border: 1px solid #CBD5E1; border-radius: 6px; padding: 10px; background: #F8FAFC;">
-                <div style="font-size: 11px; font-weight: 700; color: #64748B;">STEP 1: COLLECT</div>
+                <div style="font-size: 14px; font-weight: 700; color: #64748B;">STEP 1: COLLECT</div>
                 <div style="font-size: 16px; font-weight: 700; color: #0F172A; margin: 4px 0;">{total_reviews_pulled:,}</div>
-                <div style="font-size: 12px; color: #475569;">Play Store app reviews scraped across periods.</div>
+                <div style="font-size: 14px; color: #475569;">Play Store app reviews scraped across periods.</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -58,9 +58,9 @@ def render_method():
         st.markdown(
             f"""
             <div style="border: 1px solid #CBD5E1; border-radius: 6px; padding: 10px; background: #F8FAFC;">
-                <div style="font-size: 11px; font-weight: 700; color: #64748B;">STEP 2: FILTER</div>
+                <div style="font-size: 14px; font-weight: 700; color: #64748B;">STEP 2: FILTER</div>
                 <div style="font-size: 16px; font-weight: 700; color: #0F172A; margin: 4px 0;">{total_sip_unique:,}</div>
-                <div style="font-size: 12px; color: #475569;">Unique deduplicated reviews mentioning SIP.</div>
+                <div style="font-size: 14px; color: #475569;">Unique deduplicated reviews mentioning SIP.</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -69,9 +69,9 @@ def render_method():
         st.markdown(
             f"""
             <div style="border: 1px solid #CBD5E1; border-radius: 6px; padding: 10px; background: #F8FAFC;">
-                <div style="font-size: 11px; font-weight: 700; color: #64748B;">STEP 3: LABEL</div>
+                <div style="font-size: 14px; font-weight: 700; color: #64748B;">STEP 3: LABEL</div>
                 <div style="font-size: 16px; font-weight: 700; color: #0F172A; margin: 4px 0;">{total_labelled:,}</div>
-                <div style="font-size: 12px; color: #475569;">AI-classified reviews with normalized taxonomy.</div>
+                <div style="font-size: 14px; color: #475569;">AI-classified reviews with normalized taxonomy.</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -80,9 +80,9 @@ def render_method():
         st.markdown(
             f"""
             <div style="border: 1px solid #CBD5E1; border-radius: 6px; padding: 10px; background: #F8FAFC;">
-                <div style="font-size: 11px; font-weight: 700; color: #64748B;">STEP 4: CHECK</div>
+                <div style="font-size: 14px; font-weight: 700; color: #64748B;">STEP 4: CHECK</div>
                 <div style="font-size: 16px; font-weight: 700; color: #0F172A; margin: 4px 0;">70 Audited</div>
-                <div style="font-size: 12px; color: #475569;">30 human golden rows + 40 second-model audits.</div>
+                <div style="font-size: 14px; color: #475569;">30 human golden rows + 40 second-model audits.</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -91,9 +91,9 @@ def render_method():
         st.markdown(
             f"""
             <div style="border: 1px solid #CBD5E1; border-radius: 6px; padding: 10px; background: #F8FAFC;">
-                <div style="font-size: 11px; font-weight: 700; color: #64748B;">STEP 5: RANK</div>
+                <div style="font-size: 14px; font-weight: 700; color: #64748B;">STEP 5: RANK</div>
                 <div style="font-size: 16px; font-weight: 700; color: #0F172A; margin: 4px 0;">{total_relevant:,} Relevant</div>
-                <div style="font-size: 12px; color: #475569;">Opportunity scoring and loss prioritization.</div>
+                <div style="font-size: 14px; color: #475569;">Opportunity scoring and loss prioritization.</div>
             </div>
             """,
             unsafe_allow_html=True,
