@@ -18,6 +18,11 @@ from lib.compute import (
     apply_period_filter,
     compute_funnel,
     compute_headline_findings,
+    compute_theme_breakdown,
+    compute_theme_grouped,
+    compute_hypothesis_breakdown,
+    compute_break_type_breakdown,
+    compute_wishes,
 )
 
 
@@ -128,3 +133,83 @@ def test_headline_findings_empty_dataframe():
     assert findings["n_relevant"] == 0
     assert findings["top_theme"]["count"] == 0
     assert findings["lost_rate"]["rate_pct"] == 0.0
+
+
+def test_theme_breakdown(full_df):
+    """
+    Test theme breakdown: counts sum to all relevant_final == 'Yes' rows,
+    every row has n, and n < 30 triggers is_small_sample.
+    """
+    theme_df = compute_theme_breakdown(full_df)
+    expected_total = (full_df["relevant_final"] == "Yes").sum()
+    assert theme_df["count"].sum() == expected_total
+    assert (theme_df["n"] == theme_df["count"]).all()
+    assert (theme_df["is_small_sample"] == (theme_df["n"] < 30)).all()
+
+    # Small sample annotation check
+    for _, row in theme_df.iterrows():
+        if row["is_small_sample"]:
+            assert "small sample, pattern only" in row["label_text"]
+        else:
+            assert "small sample" not in row["label_text"]
+
+
+def test_theme_grouped_preserves_counts(full_df):
+    """Grouped breakdown by cause preserves total relevant review count."""
+    grouped = compute_theme_grouped(full_df, "cause")
+    expected_total = (full_df["relevant_final"] == "Yes").sum()
+    assert grouped["count"].sum() == expected_total
+
+
+def test_hypothesis_breakdown(full_df):
+    """
+    Hypothesis distribution covers all hypotheses A-E and None,
+    with counts summing to total relevant reviews.
+    """
+    hypotheses = compute_hypothesis_breakdown(full_df)
+    assert len(hypotheses) == 6
+    total_hyp_count = sum(h["count"] for h in hypotheses)
+    expected_total = (full_df["relevant_final"] == "Yes").sum()
+    assert total_hyp_count == expected_total
+    for h in hypotheses:
+        assert h["n"] == h["count"]
+        assert h["is_small_sample"] == (h["n"] < 30)
+
+
+def test_break_type_excludes_not_stated(full_df):
+    """
+    Spec §7.2: Break type split must EXCLUDE 'Not stated'.
+    Items only include Payment failure, Chose to stop, Temporary break.
+    """
+    res = compute_break_type_breakdown(full_df)
+    rel_df = full_df[full_df["relevant_final"] == "Yes"]
+
+    item_names = [item["break_type"] for item in res["items"]]
+    assert "Not stated" not in item_names
+    assert set(item_names) == {"Payment failure", "Chose to stop", "Temporary break"}
+
+    expected_not_stated = (rel_df["break_type"] == "Not stated").sum()
+    assert res["not_stated_count"] == expected_not_stated
+
+    expected_stated = rel_df["break_type"].isin(item_names).sum()
+    assert res["stated_total"] == expected_stated
+    assert sum(item["count"] for item in res["items"]) == expected_stated
+
+
+def test_wishes_counts_and_split(full_df):
+    """
+    Spec §7.2: Wishes (issue == 'Feature request') totals 319 rows,
+    correctly split by Before vs After 25 Dec 2024.
+    """
+    wishes = compute_wishes(full_df)
+    wishes_df = full_df[full_df["issue"] == "Feature request"]
+
+    assert wishes["total"] == len(wishes_df)
+    assert wishes["total"] == 319
+
+    expected_before = (wishes_df["period"] == PERIOD_BEFORE).sum()
+    expected_after = (wishes_df["period"] == PERIOD_AFTER).sum()
+
+    assert wishes["before_count"] == expected_before
+    assert wishes["after_count"] == expected_after
+    assert wishes["before_count"] + wishes["after_count"] == 319

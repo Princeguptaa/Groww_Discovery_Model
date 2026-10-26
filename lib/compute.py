@@ -194,3 +194,159 @@ def compute_headline_findings(df_filtered: pd.DataFrame) -> Dict[str, Any]:
             "n": n_outcome_stated,
         },
     }
+
+
+def compute_theme_breakdown(df_filtered: pd.DataFrame) -> pd.DataFrame:
+    """
+    Compute theme counts and shares for relevant reviews (relevant_final == 'Yes').
+    
+    Includes sample size n and a small sample flag (n < 30).
+    """
+    rel_df = df_filtered[df_filtered["relevant_final"] == "Yes"]
+    n_relevant = len(rel_df)
+
+    if n_relevant == 0:
+        return pd.DataFrame(
+            columns=["theme", "count", "pct_of_relevant", "n", "is_small_sample", "label_text"]
+        )
+
+    theme_counts = rel_df["theme"].value_counts().reset_index()
+    theme_counts.columns = ["theme", "count"]
+    theme_counts["pct_of_relevant"] = (
+        (theme_counts["count"] / n_relevant) * 100
+    ).round(1)
+    theme_counts["n"] = theme_counts["count"]
+    theme_counts["is_small_sample"] = theme_counts["n"] < 30
+    theme_counts["label_text"] = theme_counts.apply(
+        lambda row: f"{row['count']:,} (n={row['n']}) · small sample, pattern only"
+        if row["is_small_sample"]
+        else f"{row['count']:,} (n={row['n']})",
+        axis=1,
+    )
+
+    return theme_counts
+
+
+def compute_theme_grouped(
+    df_filtered: pd.DataFrame, group_col: str
+) -> pd.DataFrame:
+    """
+    Compute theme breakdown cross-tabulated by another dimension (e.g. 'cause' or 'source').
+    Only considers relevant_final == 'Yes'.
+    """
+    rel_df = df_filtered[df_filtered["relevant_final"] == "Yes"]
+    if len(rel_df) == 0:
+        return pd.DataFrame(columns=["theme", group_col, "count", "n", "is_small_sample", "label_text"])
+
+    grouped = (
+        rel_df.groupby(["theme", group_col])
+        .size()
+        .reset_index(name="count")
+    )
+    grouped["n"] = grouped["count"]
+    grouped["is_small_sample"] = grouped["n"] < 30
+    grouped["label_text"] = grouped.apply(
+        lambda row: f"{row['count']:,} (n={row['n']}) · small sample, pattern only"
+        if row["is_small_sample"]
+        else f"{row['count']:,} (n={row['n']})",
+        axis=1,
+    )
+    return grouped
+
+
+def compute_hypothesis_breakdown(df_filtered: pd.DataFrame) -> List[Dict[str, Any]]:
+    """
+    Compute hypothesis distribution for relevant reviews (relevant_final == 'Yes').
+    Hypotheses are unverified AI-assigned labels and must be labelled 'directional'.
+    """
+    rel_df = df_filtered[df_filtered["relevant_final"] == "Yes"]
+    n_relevant = len(rel_df)
+
+    counts = rel_df["hypothesis_final"].value_counts().to_dict()
+    
+    # Standard ordering for Hypotheses A to E and None
+    hypothesis_keys = [
+        "A controls not found",
+        "B failed payment no recovery",
+        "C amount does not fit money",
+        "D chose to stop for other reasons",
+        "E setup or autopay blocked",
+        "None",
+    ]
+
+    results = []
+    for hyp in hypothesis_keys:
+        cnt = int(counts.get(hyp, 0))
+        pct = round((cnt / n_relevant) * 100, 1) if n_relevant > 0 else 0.0
+        results.append(
+            {
+                "hypothesis": hyp,
+                "count": cnt,
+                "pct": pct,
+                "n": cnt,
+                "is_small_sample": cnt < 30,
+            }
+        )
+    return results
+
+
+def compute_break_type_breakdown(df_filtered: pd.DataFrame) -> Dict[str, Any]:
+    """
+    Compute break-type counts from break_type for relevant reviews (relevant_final == 'Yes').
+    
+    CRITICAL RULE (Spec §7.2):
+    Includes: 'Payment failure', 'Chose to stop', 'Temporary break'.
+    EXPLICITLY EXCLUDES 'Not stated'.
+    """
+    rel_df = df_filtered[df_filtered["relevant_final"] == "Yes"]
+    
+    counts = rel_df["break_type"].value_counts().to_dict()
+    not_stated_count = int(counts.get("Not stated", 0))
+
+    allowed_types = ["Payment failure", "Chose to stop", "Temporary break"]
+    stated_total = sum(int(counts.get(bt, 0)) for bt in allowed_types)
+
+    breakdowns = []
+    for bt in allowed_types:
+        cnt = int(counts.get(bt, 0))
+        pct = round((cnt / stated_total) * 100, 1) if stated_total > 0 else 0.0
+        breakdowns.append(
+            {
+                "break_type": bt,
+                "count": cnt,
+                "pct": pct,
+                "n": cnt,
+                "is_small_sample": cnt < 30,
+            }
+        )
+
+    return {
+        "stated_total": stated_total,
+        "not_stated_count": not_stated_count,
+        "items": breakdowns,
+    }
+
+
+def compute_wishes(df: pd.DataFrame) -> Dict[str, Any]:
+    """
+    Compute Wishes (Feature Requests) volume from issue == 'Feature request'.
+    
+    CRITICAL RULE (Spec §7.2):
+    Split by period: Before 25 Dec 2024 vs After 25 Dec 2024.
+    """
+    wishes_df = df[df["issue"] == "Feature request"]
+    total = len(wishes_df)
+    before_count = int((wishes_df["period"] == PERIOD_BEFORE).sum())
+    after_count = int((wishes_df["period"] == PERIOD_AFTER).sum())
+
+    before_pct = round((before_count / total) * 100, 1) if total > 0 else 0.0
+    after_pct = round((after_count / total) * 100, 1) if total > 0 else 0.0
+
+    return {
+        "total": total,
+        "before_count": before_count,
+        "before_pct": before_pct,
+        "after_count": after_count,
+        "after_pct": after_pct,
+    }
+
