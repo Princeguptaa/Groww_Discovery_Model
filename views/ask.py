@@ -14,6 +14,7 @@ import streamlit as st
 import pandas as pd
 from lib.data_loader import load_reviews
 from lib.ai_client import call_ai_ask, MAX_SESSION_CALLS
+from lib.compute import compute_stats_for_ask
 from lib.fallback_examples import ASK_DATA_FALLBACKS
 
 SUGGESTED_QUESTIONS = [
@@ -26,21 +27,25 @@ SUGGESTED_QUESTIONS = [
 ]
 
 
-def _build_stats_block(df: pd.DataFrame) -> str:
+def _build_stats_block(df: pd.DataFrame) -> Tuple[str, dict]:
     """Computes exact dataset distribution numbers in code."""
-    rel_df = df[df["relevant_final"] == "Yes"]
-    wishes_df = df[df["issue"] == "Feature request"]
+    stats_dict = compute_stats_for_ask(df)
 
     lines = [
-        f"Total relevant reviews: {len(rel_df):,}",
-        f"Distribution by period: {rel_df['period'].value_counts().to_dict()}",
-        f"Top themes: {rel_df['theme'].value_counts().head(10).to_dict()}",
-        f"Break types: {rel_df['break_type'].value_counts().to_dict()}",
-        f"Stated outcomes: {rel_df['outcome_final'].value_counts().to_dict()}",
-        f"Hypotheses (directional): {rel_df['hypothesis_final'].value_counts().to_dict()}",
-        f"Total feature requests (wishes): {len(wishes_df):,} reviews",
+        f"Total relevant reviews: {stats_dict['n_relevant']:,}",
+        f"Distribution by period: {stats_dict['period_dist']}",
+        f"Top themes: {dict(list(stats_dict['theme_counts'].items())[:10])}",
+        f"Payment failed mentions: {stats_dict['pay_fail_count']:,}",
+        f"Support not solving mentions: {stats_dict['support_count']:,}",
+        f"Cannot edit or pause or stop mentions: {stats_dict['cannot_edit_count']:,}",
+        f"Break types: {stats_dict['break_types']}",
+        f"Stated outcomes: {stats_dict['outcomes']}",
+        f"Lost count among stated outcomes: {stats_dict['lost_count']:,} of {stats_dict['n_outcome_stated']:,}",
+        f"Hypotheses (directional): {stats_dict['hypotheses']}",
+        f"Total feature requests (wishes): {stats_dict['wishes_total']:,} reviews",
+        f"Controls mentioned: {stats_dict['controls']}",
     ]
-    return "\n".join(lines)
+    return "\n".join(lines), stats_dict
 
 
 def _get_context_examples(
@@ -109,10 +114,10 @@ def render_ask():
             return
 
         with st.spinner("Synthesizing answer from verified evidence quotes and stats..."):
-            stats_block = _build_stats_block(df)
+            stats_block, stats_dict = _build_stats_block(df)
             examples_block, allowed_ids = _get_context_examples(df, clean_query)
             answer, is_live, msg = call_ai_ask(
-                clean_query, stats_block, examples_block, allowed_ids
+                clean_query, stats_block, examples_block, allowed_ids, stats_dict=stats_dict
             )
 
         if is_live:

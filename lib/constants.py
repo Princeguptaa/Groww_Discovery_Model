@@ -54,7 +54,6 @@ PERIOD_OPTIONS = [PERIOD_ALL, PERIOD_BEFORE, PERIOD_AFTER]
 NAV_VIEWS = [
     "Overview",
     "Themes",
-    "Journey",
     "Opportunities",
     "Evidence",
     "Ask the Data",

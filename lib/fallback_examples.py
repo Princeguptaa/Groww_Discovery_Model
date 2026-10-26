@@ -72,43 +72,67 @@ TRYIT_FALLBACKS = {
     },
 }
 
-# Ask-the-Data Fallback Answers for 6 Suggested Questions
-ASK_DATA_FALLBACKS: Dict[str, str] = {
-    "What are the most common reasons people say their SIP failed or was missed?": (
-        "Across relevant reviews, payment failure or missed instalments is the largest continuation problem (118 mentions). "
-        "Reviewers frequently cite autopay mandate sync errors between banks and BSE Star MF, UPI Autopay transaction timeouts, "
-        "and lack of prompt retry prompts [E0023, E0105]. When payments fail, users are left in limbo because manual instalment "
-        "recovery is unavailable [E0234]. Support not solving acts as an amplifier in 123 reviews, where delayed ticket resolution "
-        "causes investors to abandon the SIP [E0045, E0112]."
-    ),
-    "How do the problems differ before and after 25 Dec 2024?": (
-        "Before 25 Dec 2024, 'Payment failed or missed' dominated continuation complaints (99 mentions, ~19% share) [E0012, E0089]. "
-        "After 25 Dec 2024 (when Groww launched UPI Autopay with Rs 1 and stock SIP), the relative share of payment failure dropped, "
-        "and 'Cannot edit or pause or stop' emerged as the top continuation complaint (30 mentions) [E1620, E1684]. "
-        "Users in the recent period report difficulty pausing or adjusting active mandates during temporary liquidity crunches [E1712]."
-    ),
-    "What do users say they did after a failed or cancelled SIP?": (
-        "Among reviews with stated outcomes, over two hundred reviews report stopping or cancelling, switching away, or stalling not by choice. "
-        "The most common workaround attempted was contacting support, though 123 reviews note support failed to resolve the issue [E0142]. "
-        "A minority attempted manual one-time instalment payments [E0204], while others switched to competitor platforms like Zerodha Coin "
-        "or directly with AMC portals due to persistent deduction delays [E0312, E0450]."
-    ),
-    "Which problems are about money leaving the bank but not showing in the app?": (
-        "Two prominent money-flag themes capture funds leaving the investor's bank without app unit allocation: "
-        "'Processing or unit allocation delay' (39 reviews) and 'Debited after cancel or wrong amount' (41 reviews) [E0067, E0198]. "
-        "Investors express high anxiety when bank SMS confirms deduction but Groww shows 'In Progress' or 'Pending' past NAV cutoff times [E0245, E0319]."
-    ),
-    "What do users ask for that Groww does not offer yet?": (
-        "There are 319 feature request reviews in the corpus. While stock SIP requests clustered prior to Dec 2024, "
-        "frequent unmet wishes continue for weekly and daily mutual fund SIP options, automated step-up SIPs by percentage, "
-        "and instant one-click pause toggles for up to 3 months without bank mandate re-authentication [E0512, E0621, E1704]."
-    ),
-    "How many reviews mention skipping, pausing or editing a SIP, and what do they say?": (
-        "Controls are mentioned across relevant reviews: 'Pause' is mentioned in 76 reviews, 'Edit date or amount' in 76 reviews, "
-        "and 'Skip' in several dozen reviews. Reviewers complain that attempting to pause or edit often fails silently or instructs "
-        "them to cancel the entire SIP and re-register from scratch [E0088, E0215, E0340]."
-    ),
-}
+from typing import Dict, Any, Optional
+
+
+def format_ask_fallback_answers(stats: Dict[str, Any]) -> Dict[str, str]:
+    """
+    Generate Ask-the-Data fallback answers dynamically from the code-computed STATS block.
+    Guarantees numbers always match the Overview, Themes, and Opportunities screens.
+    Zero typed numbers.
+    """
+    return {
+        "What are the most common reasons people say their SIP failed or was missed?": (
+            f"Across relevant reviews, payment failure or missed instalments is the largest continuation problem "
+            f"({stats['pay_fail_count']:,} mentions). "
+            f"Reviewers frequently cite autopay mandate sync errors between banks and BSE Star MF, UPI Autopay transaction timeouts, "
+            f"and lack of prompt retry prompts [E0023, E0105]. When payments fail, users are left in limbo because manual instalment "
+            f"recovery is unavailable [E0234]. Support not solving acts as an amplifier in {stats['support_count']:,} reviews, "
+            f"where delayed ticket resolution causes investors to abandon the SIP [E0045, E0112]."
+        ),
+        "How do the problems differ before and after 25 Dec 2024?": (
+            f"Before 25 Dec 2024, 'Payment failed or missed' dominated continuation complaints "
+            f"({stats['before_pay_fail_count']:,} mentions, ~{stats['before_pay_fail_pct']:.1f}% share of continuation) [E0012, E0089]. "
+            f"After 25 Dec 2024 (when Groww launched UPI Autopay with Rs 1 and stock SIP), the relative share of payment failure dropped, "
+            f"and 'Cannot edit or pause or stop' emerged as a top continuation complaint ({stats['after_cannot_edit_count']:,} mentions) [E1620, E1684]. "
+            f"Users in the recent period report difficulty pausing or adjusting active mandates during temporary liquidity crunches [E1712]."
+        ),
+        "What do users say they did after a failed or cancelled SIP?": (
+            f"Among reviews with stated outcomes ({stats['n_outcome_stated']:,} reviews), {stats['lost_count']:,} reviews "
+            f"report stopping or cancelling, switching away, or stalling not by choice. "
+            f"The most common workaround attempted was contacting support, though {stats['support_count']:,} reviews note support failed to resolve the issue [E0142]. "
+            f"A minority attempted manual one-time instalment payments [E0204], while others switched to competitor platforms like Zerodha Coin "
+            f"or directly with AMC portals due to persistent deduction delays [E0312, E0450]."
+        ),
+        "Which problems are about money leaving the bank but not showing in the app?": (
+            f"Two prominent money-flag themes capture funds leaving the investor's bank without app unit allocation: "
+            f"'Processing or unit allocation delay' ({stats['money_delay_count']:,} reviews) and "
+            f"'Debited after cancel or wrong amount' ({stats['money_debited_cancel_count']:,} reviews) [E0067, E0198]. "
+            f"Investors express high anxiety when bank SMS confirms deduction but Groww shows 'In Progress' or 'Pending' past NAV cutoff times [E0245, E0319]."
+        ),
+        "What do users ask for that Groww does not offer yet?": (
+            f"There are {stats['wishes_total']:,} feature request reviews in the corpus. While stock SIP requests clustered prior to Dec 2024, "
+            f"frequent unmet wishes continue for weekly and daily mutual fund SIP options, automated step-up SIPs by percentage, "
+            f"and instant one-click pause toggles for up to 3 months without bank mandate re-authentication [E0512, E0621, E1704]."
+        ),
+        "How many reviews mention skipping, pausing or editing a SIP, and what do they say?": (
+            f"Controls are mentioned across relevant reviews: 'Cannot edit or pause or stop' is a primary theme in "
+            f"{stats['cannot_edit_count']:,} reviews, with specific control mentions including Pause ({stats['controls'].get('Pause', 0):,} reviews), "
+            f"Edit date or amount ({stats['controls'].get('Edit date or amount', 0):,} reviews), and Skip ({stats['controls'].get('Skip', 0):,} reviews). "
+            f"Reviewers complain that attempting to pause or edit often fails silently or instructs them to cancel the entire SIP and re-register from scratch [E0088, E0215, E0340]."
+        ),
+    }
+
+
+def _get_computed_stats() -> Dict[str, Any]:
+    from lib.data_loader import load_reviews
+    from lib.compute import compute_stats_for_ask
+    df = load_reviews()
+    return compute_stats_for_ask(df)
+
+
+# Module-level dictionary dynamically generated from data
+ASK_DATA_FALLBACKS: Dict[str, str] = format_ask_fallback_answers(_get_computed_stats())
 
 
 def get_tryit_fallback(preset_name: str = "Payment failure review") -> Dict[str, Any]:
@@ -116,13 +140,19 @@ def get_tryit_fallback(preset_name: str = "Payment failure review") -> Dict[str,
     return TRYIT_FALLBACKS.get(preset_name, TRYIT_FALLBACKS["Payment failure review"])
 
 
-def get_ask_fallback(question: str) -> str:
-    """Retrieve pre-saved answer for a suggested question, or a default summary."""
-    for q, ans in ASK_DATA_FALLBACKS.items():
+def get_ask_fallback(question: str, stats: Optional[Dict[str, Any]] = None) -> str:
+    """Retrieve code-generated answer for a question from the STATS block with no typed numbers."""
+    if stats is None:
+        stats = _get_computed_stats()
+
+    answers = format_ask_fallback_answers(stats)
+    for q, ans in answers.items():
         if question.strip().lower() == q.strip().lower():
             return ans
+
     return (
-        "Based on the discovery dataset: Continuation friction is driven primarily by payment mandate synchronization failures, "
-        "lack of self-serve pause/edit controls, and delayed support escalation [E0023, E0118]. For customized query exploration, "
-        "verify the Gemini API key configuration."
+        f"Based on the discovery dataset of {stats['n_relevant']:,} relevant reviews: Continuation friction is driven primarily by "
+        f"payment mandate synchronization failures ({stats['pay_fail_count']:,} reviews), lack of self-serve pause/edit controls "
+        f"({stats['cannot_edit_count']:,} reviews), and delayed support escalation ({stats['support_count']:,} reviews) [E0023, E0118]. "
+        f"For customized query exploration, verify the Gemini API key configuration."
     )

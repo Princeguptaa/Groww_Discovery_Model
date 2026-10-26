@@ -23,6 +23,8 @@ from lib.compute import (
     compute_hypothesis_breakdown,
     compute_break_type_breakdown,
     compute_wishes,
+    compute_opportunity_table,
+    compute_stats_for_ask,
 )
 
 
@@ -274,4 +276,54 @@ def test_evidence_filters_change_count_at2(full_df):
     ]
     assert len(combined) < len(filtered_period)
     assert len(combined) < len(filtered_theme)
+
+
+def test_opportunity_table_computation(full_df):
+    """
+    Validates opportunity table calculation across sort orders and period filters.
+    """
+    # 1. Default sort by priority_score
+    df_score = compute_opportunity_table(full_df, sort_by="priority_score")
+    assert len(df_score) > 0
+    assert (df_score["mentions"] >= 5).all()
+    # Check descending order of priority_score
+    scores = df_score["priority_score"].tolist()
+    assert scores == sorted(scores, reverse=True)
+
+    # 2. Sort by mentions
+    df_mentions = compute_opportunity_table(full_df, sort_by="mentions")
+    mentions_list = df_mentions["mentions"].tolist()
+    assert mentions_list == sorted(mentions_list, reverse=True)
+
+    # 3. Low n_outcome_known (< 5) sets lost_rate to 0.0
+    low_known = df_score[df_score["n_outcome_known"] < 5]
+    if len(low_known) > 0:
+        assert (low_known["lost_rate_among_known"] == 0.0).all()
+
+    # 4. Period filter handling
+    before_df = apply_period_filter(full_df, PERIOD_BEFORE)
+    opp_before = compute_opportunity_table(before_df)
+    assert len(opp_before) > 0
+    assert (opp_before["mentions"] >= 5).all()
+
+    # 5. Empty dataframe returns empty result with correct schema
+    empty_df = full_df[full_df["relevant_final"] == "NonExistent"]
+    opp_empty = compute_opportunity_table(empty_df)
+    assert len(opp_empty) == 0
+    assert "priority_score" in opp_empty.columns
+
+
+def test_compute_stats_for_ask(full_df):
+    """
+    Validates compute_stats_for_ask generates all required fields matching the dataset.
+    """
+    stats = compute_stats_for_ask(full_df)
+    rel_count = (full_df["relevant_final"] == "Yes").sum()
+    assert stats["n_relevant"] == rel_count
+    assert stats["wishes_total"] == (full_df["issue"] == "Feature request").sum()
+    assert stats["pay_fail_count"] > 0
+    assert stats["support_count"] > 0
+    assert stats["n_outcome_stated"] > 0
+    assert stats["lost_count"] > 0
+
 

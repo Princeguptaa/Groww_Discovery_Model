@@ -96,7 +96,7 @@ def compute_audit_metrics(audit_df: pd.DataFrame) -> Dict[str, Any]:
     """
     Compute second-model audit metrics across 40 reviews (Spec §7.8).
     
-    Evaluates primary AI model against a second AI model (Gemini Flash).
+    Evaluates primary AI model against a second AI model (Claude), not a human.
     Stage, issue, and cause agreement evaluated on rows where second_model_relevant == 'Yes'.
     Unsure counts as a mismatch.
     """

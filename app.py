@@ -9,7 +9,6 @@ import streamlit as st
 from lib.constants import FOOTER_TEXT, NAV_VIEWS, PERIOD_OPTIONS
 from views.overview import render_overview
 from views.themes import render_themes
-from views.journey import render_journey
 from views.opportunities import render_opportunities
 from views.evidence import render_evidence
 from views.ask import render_ask
@@ -41,7 +40,7 @@ nav_selection = st.sidebar.radio(
 )
 
 # Global Period Filter on applicable views (spec §6, ARCHITECTURE §2.3)
-if nav_selection in ["Overview", "Themes", "Journey", "Opportunities", "Evidence"]:
+if nav_selection in ["Overview", "Themes", "Opportunities", "Evidence"]:
     st.sidebar.markdown("---")
     st.sidebar.subheader("Period Filter")
     st.sidebar.radio(
@@ -54,7 +53,6 @@ if nav_selection in ["Overview", "Themes", "Journey", "Opportunities", "Evidence
 VIEW_DISPATCHER = {
     "Overview": render_overview,
     "Themes": render_themes,
-    "Journey": render_journey,
     "Opportunities": render_opportunities,
     "Evidence": render_evidence,
     "Ask the Data": render_ask,

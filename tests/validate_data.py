@@ -115,3 +115,27 @@ def test_no_hardcoded_funnel_counts():
         content = file_path.read_text(encoding="utf-8")
         matches = pattern.findall(content)
         assert len(matches) == 0, f"Found hardcoded counts {matches} in {file_path}"
+
+
+def test_opportunity_table_matches_oracle(reviews_df):
+    """The Opportunities table computed for 'All' equals opportunity_table.csv (Spec §7.4, Note 3)."""
+    import pandas as pd
+    from lib.compute import compute_opportunity_table
+    from lib.data_loader import DATA_DIR
+
+    oracle_path = DATA_DIR / "opportunity_table.csv"
+    oracle_df = pd.read_csv(oracle_path)
+
+    computed_df = compute_opportunity_table(reviews_df, sort_by="priority_score")
+
+    assert len(computed_df) == len(oracle_df)
+    assert list(computed_df.columns) == list(oracle_df.columns)
+
+    for col in oracle_df.columns:
+        if col in ["share_of_relevant_pct", "priority_score"]:
+            assert (computed_df[col].round(1) == oracle_df[col].round(1)).all()
+        elif col == "lost_rate_among_known":
+            assert (computed_df[col].round(2) == oracle_df[col].round(2)).all()
+        else:
+            assert (computed_df[col] == oracle_df[col]).all()
+

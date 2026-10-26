@@ -150,8 +150,8 @@ def render_method():
     # 3. Second-Model Audit (Spec §7.8)
     st.subheader("3. Second-Model Audit (40 Reviews)")
     st.caption(
-        "Benchmarked against a second independent AI model (Gemini Flash). "
-        "Notice: This benchmark was produced by a second AI model, not a human. Unsure classifications count as mismatches. "
+        "Benchmarked against a second AI model (Claude), not a human. "
+        "Unsure classifications count as mismatches. "
         "Stage, issue, and cause agreement are evaluated on rows where Second Model = 'Yes' (13 reviews)."
     )
 

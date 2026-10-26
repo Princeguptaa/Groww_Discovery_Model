@@ -13,6 +13,7 @@ from lib.constants import (
     PERIOD_BEFORE,
     PERIOD_AFTER,
     LOST_OUTCOMES,
+    MONEY_FLAG_THEMES,
 )
 
 
@@ -366,4 +367,167 @@ def compute_wishes(df: pd.DataFrame) -> Dict[str, Any]:
         "after_count": after_count,
         "after_pct": after_pct,
     }
+
+
+def compute_opportunity_table(
+    df_filtered: pd.DataFrame, sort_by: str = "priority_score"
+) -> pd.DataFrame:
+    """
+    Compute Opportunity priority table at runtime from period-filtered reviews (Spec §7.4).
+    
+    Formula:
+      - Filter to relevant_final == 'Yes' in the active period slice.
+      - Group by (theme, cause).
+      - Exclude groups with mentions < 5.
+      - share_of_relevant_pct = (mentions / total_relevant) * 100, rounded to 1 decimal.
+      - n_outcome_known = count of rows where outcome_final != 'Unknown'.
+      - lost_rate_among_known = (lost_count / n_outcome_known), set to 0.0 if n_outcome_known < 5,
+        rounded to 2 decimals.
+      - money_flag = 1 if theme in MONEY_FLAG_THEMES else 0.
+      - priority_score = mentions * (1 + lost_rate_raw) * (1 + money_flag), rounded to 1 decimal.
+      
+    Args:
+      df_filtered: Dataframe filtered by active period.
+      sort_by: Column to sort descending by ('priority_score' or 'mentions').
+      
+    Returns:
+      pd.DataFrame with columns:
+        theme, cause, mentions, share_of_relevant_pct, n_outcome_known,
+        lost_rate_among_known, money_flag, priority_score
+    """
+    rel_df = df_filtered[df_filtered["relevant_final"] == "Yes"]
+    total_rel = len(rel_df)
+
+    if total_rel == 0:
+        return pd.DataFrame(
+            columns=[
+                "theme",
+                "cause",
+                "mentions",
+                "share_of_relevant_pct",
+                "n_outcome_known",
+                "lost_rate_among_known",
+                "money_flag",
+                "priority_score",
+            ]
+        )
+
+    rows = []
+    for (theme, cause), group in rel_df.groupby(["theme", "cause"]):
+        mentions = len(group)
+        if mentions < 5:
+            continue
+
+        share_pct = (mentions / total_rel) * 100
+        known = group[group["outcome_final"] != "Unknown"]
+        n_known = len(known)
+
+        if n_known < 5:
+            lost_rate_raw = 0.0
+            lost_rate_rounded = 0.0
+        else:
+            lost_count = int(known["outcome_final"].isin(LOST_OUTCOMES).sum())
+            lost_rate_raw = lost_count / n_known
+            lost_rate_rounded = round(lost_rate_raw, 2)
+
+        money_flag = 1 if theme in MONEY_FLAG_THEMES else 0
+        priority_score_raw = mentions * (1 + lost_rate_raw) * (1 + money_flag)
+
+        rows.append(
+            {
+                "theme": theme,
+                "cause": cause,
+                "mentions": mentions,
+                "share_of_relevant_pct": round(share_pct, 1),
+                "n_outcome_known": n_known,
+                "lost_rate_among_known": lost_rate_rounded,
+                "money_flag": money_flag,
+                "priority_score": round(priority_score_raw, 1),
+            }
+        )
+
+    result_df = pd.DataFrame(rows)
+    if len(result_df) == 0:
+        return result_df
+
+    if sort_by == "mentions":
+        result_df = result_df.sort_values(
+            by=["mentions", "priority_score"], ascending=[False, False]
+        ).reset_index(drop=True)
+    else:
+        result_df = result_df.sort_values(
+            by=["priority_score", "mentions"], ascending=[False, False]
+        ).reset_index(drop=True)
+
+    return result_df
+
+
+def compute_stats_for_ask(df: pd.DataFrame) -> Dict[str, Any]:
+    """
+    Compute structured stats from the review corpus for Ask the Data screen.
+    Guarantees all counts and percentages match other screens without typed numbers.
+    """
+    rel_df = df[df["relevant_final"] == "Yes"]
+    n_relevant = len(rel_df)
+    wishes_df = df[df["issue"] == "Feature request"]
+    wishes_total = len(wishes_df)
+
+    theme_counts = rel_df["theme"].value_counts().to_dict()
+    pay_fail_count = int(theme_counts.get("Payment failed or missed", 0))
+    support_count = int(theme_counts.get("Support not solving", 0))
+    cannot_edit_count = int(theme_counts.get("Cannot edit or pause or stop", 0))
+    setup_count = int(theme_counts.get("Cannot start or set up SIP", 0))
+
+    before_df = rel_df[rel_df["period"] == PERIOD_BEFORE]
+    after_df = rel_df[rel_df["period"] == PERIOD_AFTER]
+    before_rel_count = len(before_df)
+    after_rel_count = len(after_df)
+
+    before_pay_fail_count = int((before_df["theme"] == "Payment failed or missed").sum())
+    before_pay_fail_pct = (
+        round((before_pay_fail_count / before_rel_count) * 100, 1)
+        if before_rel_count > 0
+        else 0.0
+    )
+    after_cannot_edit_count = int((after_df["theme"] == "Cannot edit or pause or stop").sum())
+
+    stated_outcomes = rel_df[rel_df["outcome_final"] != "Unknown"]
+    n_outcome_stated = len(stated_outcomes)
+    lost_mask = stated_outcomes["outcome_final"].isin(LOST_OUTCOMES)
+    lost_count = int(lost_mask.sum())
+
+    controls_series = rel_df["controls_mentioned"].dropna()
+    controls = {
+        "Pause": int(controls_series.str.contains("Pause").sum()),
+        "Edit date or amount": int(controls_series.str.contains("Edit").sum()),
+        "Skip": int(controls_series.str.contains("Skip").sum()),
+    }
+
+    money_delay_count = int(theme_counts.get("Processing or unit allocation delay", 0))
+    money_debited_cancel_count = int(theme_counts.get("Debited after cancel or wrong amount", 0))
+
+    return {
+        "n_relevant": n_relevant,
+        "wishes_total": wishes_total,
+        "theme_counts": theme_counts,
+        "pay_fail_count": pay_fail_count,
+        "support_count": support_count,
+        "cannot_edit_count": cannot_edit_count,
+        "setup_count": setup_count,
+        "before_rel_count": before_rel_count,
+        "after_rel_count": after_rel_count,
+        "before_pay_fail_count": before_pay_fail_count,
+        "before_pay_fail_pct": before_pay_fail_pct,
+        "after_cannot_edit_count": after_cannot_edit_count,
+        "n_outcome_stated": n_outcome_stated,
+        "lost_count": lost_count,
+        "controls": controls,
+        "money_delay_count": money_delay_count,
+        "money_debited_cancel_count": money_debited_cancel_count,
+        "period_dist": rel_df["period"].value_counts().to_dict(),
+        "break_types": rel_df["break_type"].value_counts().to_dict(),
+        "outcomes": rel_df["outcome_final"].value_counts().to_dict(),
+        "hypotheses": rel_df["hypothesis_final"].value_counts().to_dict(),
+    }
+
 

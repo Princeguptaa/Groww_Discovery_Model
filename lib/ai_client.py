@@ -79,6 +79,27 @@ def get_gemini_api_key() -> Optional[str]:
     return None
 
 
+def strip_invalid_citations(text: str, allowed_ids: set) -> str:
+    """
+    Strips citation IDs that are not present in allowed_ids.
+    If no valid citations remain inside brackets, the bracket is removed.
+    """
+    import re
+
+    def replace_bracket(match):
+        content = match.group(1)
+        found_ids = re.findall(r"E\d{4}", content)
+        valid = [eid for eid in found_ids if eid in allowed_ids]
+        if valid:
+            return f"[{', '.join(valid)}]"
+        return ""
+
+    cleaned = re.sub(r"\[([^\]]*)\]", replace_bracket, text)
+    cleaned = re.sub(r" +", " ", cleaned)
+    cleaned = re.sub(r" \.", ".", cleaned)
+    return cleaned.strip()
+
+
 def call_ai_label(review_text: str) -> Tuple[Dict[str, Any], bool, str]:
     """
     Labels review text using Gemini API with model fallback and rate limiting.
@@ -107,8 +128,7 @@ def call_ai_label(review_text: str) -> Tuple[Dict[str, Any], bool, str]:
 
     # Check daily limit
     tracker = get_daily_tracker()
-    allowed, daily_count = tracker.increment()
-    if not allowed:
+    if tracker.get_count() >= MAX_DAILY_CALLS:
         fallback = get_tryit_fallback()
         return (
             fallback["labels"],
@@ -134,7 +154,8 @@ def call_ai_label(review_text: str) -> Tuple[Dict[str, Any], bool, str]:
             norm_data = normalise(raw_data)
             final_labels = apply_post_rules(norm_data)
 
-            # Increment session count on success
+            # Only increment counters on successful parse of valid JSON
+            tracker.increment()
             st.session_state["ai_call_count"] = session_calls + 1
             return (
                 final_labels,
@@ -142,7 +163,7 @@ def call_ai_label(review_text: str) -> Tuple[Dict[str, Any], bool, str]:
                 f"Live AI classification complete ({model_name}). Call {session_calls + 1}/{MAX_SESSION_CALLS}.",
             )
         except Exception:
-            # Fallback to next model on failure/timeout
+            # Fallback to next model on failure/timeout/malformed JSON
             continue
 
     # Fallback if all models failed
@@ -155,7 +176,11 @@ def call_ai_label(review_text: str) -> Tuple[Dict[str, Any], bool, str]:
 
 
 def call_ai_ask(
-    question: str, stats_block: str, examples_block: str, allowed_ids: set
+    question: str,
+    stats_block: str,
+    examples_block: str,
+    allowed_ids: set,
+    stats_dict: Optional[Dict[str, Any]] = None,
 ) -> Tuple[str, bool, str]:
     """
     Answers user inquiry using Gemini API with ground-truth stats and context examples.
@@ -166,7 +191,7 @@ def call_ai_ask(
     api_key = get_gemini_api_key()
     if not api_key:
         return (
-            get_ask_fallback(question),
+            get_ask_fallback(question, stats_dict),
             False,
             "Saved answer displayed (Gemini API key not configured in secrets).",
         )
@@ -174,16 +199,15 @@ def call_ai_ask(
     session_calls = st.session_state.get("ai_call_count", 0)
     if session_calls >= MAX_SESSION_CALLS:
         return (
-            get_ask_fallback(question),
+            get_ask_fallback(question, stats_dict),
             False,
             f"Session limit reached ({MAX_SESSION_CALLS} calls). Showing saved answer.",
         )
 
     tracker = get_daily_tracker()
-    allowed, daily_count = tracker.increment()
-    if not allowed:
+    if tracker.get_count() >= MAX_DAILY_CALLS:
         return (
-            get_ask_fallback(question),
+            get_ask_fallback(question, stats_dict),
             False,
             f"Global daily cap reached ({MAX_DAILY_CALLS} calls). Showing saved answer.",
         )
@@ -222,16 +246,10 @@ USER QUESTION:
                 ),
             )
             raw_answer = str(response.text).strip()
-            
-            # Strip invalid or hallucinated citations
-            import re
-            def clean_cite(match):
-                ids = [i.strip() for i in match.group(1).split(",")]
-                valid = [i for i in ids if i in allowed_ids]
-                return f"[{', '.join(valid)}]" if valid else ""
+            cleaned_answer = strip_invalid_citations(raw_answer, allowed_ids)
 
-            cleaned_answer = re.sub(r"\[(E\d{4}(?:,\s*E\d{4})*)\]", clean_cite, raw_answer)
-
+            # Only increment counters on successful live response
+            tracker.increment()
             st.session_state["ai_call_count"] = session_calls + 1
             return (
                 cleaned_answer,
@@ -242,7 +260,7 @@ USER QUESTION:
             continue
 
     return (
-        get_ask_fallback(question),
+        get_ask_fallback(question, stats_dict),
         False,
         "AI service temporarily unavailable. Showing saved answer.",
     )
