@@ -90,18 +90,26 @@ def test_data_files_location_strictly_data_dir():
 
 
 def test_no_confidence_rendered():
-    """Code search: confidence column is never rendered in views or app.py."""
-    code_files = list((BASE_DIR / "views").glob("*.py")) + [BASE_DIR / "app.py"]
+    """Code search: confidence column is never rendered in views, lib, or app.py."""
+    code_files = (
+        list((BASE_DIR / "views").glob("*.py"))
+        + list((BASE_DIR / "lib").glob("*.py"))
+        + [BASE_DIR / "app.py"]
+    )
+    pattern = re.compile(r"\bconfidence\b", re.IGNORECASE)
     for file_path in code_files:
         content = file_path.read_text(encoding="utf-8")
-        # Check for direct rendering of confidence column
-        assert '["confidence"]' not in content, f"Direct confidence access in {file_path}"
-        assert "['confidence']" not in content, f"Direct confidence access in {file_path}"
+        matches = pattern.findall(content)
+        assert len(matches) == 0, f"Found 'confidence' match {matches} in {file_path}"
 
 
 def test_no_hardcoded_funnel_counts():
-    """Code search: assert no hardcoded funnel reference counts in app or views."""
-    code_files = list((BASE_DIR / "views").glob("*.py")) + [BASE_DIR / "app.py"]
+    """Code search: assert no hardcoded funnel reference counts in views, lib, or app.py."""
+    code_files = (
+        list((BASE_DIR / "views").glob("*.py"))
+        + list((BASE_DIR / "lib").glob("*.py"))
+        + [BASE_DIR / "app.py"]
+    )
     pattern = re.compile(r"\b(1809|721|513|208)\b")
     for file_path in code_files:
         content = file_path.read_text(encoding="utf-8")

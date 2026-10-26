@@ -6,7 +6,7 @@ sidebar navigation router, view dispatching, and the universal footer.
 """
 
 import streamlit as st
-from lib.constants import FOOTER_TEXT, NAV_VIEWS
+from lib.constants import FOOTER_TEXT, NAV_VIEWS, PERIOD_OPTIONS
 from views.overview import render_overview
 from views.themes import render_themes
 from views.journey import render_journey
@@ -39,6 +39,16 @@ nav_selection = st.sidebar.radio(
     options=NAV_VIEWS,
     key="nav_radio",
 )
+
+# Global Period Filter on applicable views (spec §6, ARCHITECTURE §2.3)
+if nav_selection in ["Overview", "Themes", "Journey", "Opportunities", "Evidence"]:
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("Period Filter")
+    st.sidebar.radio(
+        "Period",
+        options=PERIOD_OPTIONS,
+        key="period_filter",
+    )
 
 # Dispatch view
 VIEW_DISPATCHER = {
