@@ -1,0 +1,19 @@
+theme,cause,mentions,share_of_relevant_pct,n_outcome_known,lost_rate_among_known,money_flag,priority_score
+Payment failed or missed,Product side,91,12.6,52,0.83,1,332.5
+Support not solving,Product side,122,16.9,85,0.93,0,235.4
+Cannot start or set up SIP,Product side,114,15.8,19,0.79,0,204.0
+Debited after cancel or wrong amount,Product side,38,5.3,31,0.97,1,149.5
+Cannot edit or pause or stop,Product side,75,10.4,57,0.65,0,123.7
+Payment failed or missed,Money side,27,3.7,9,0.67,1,90.0
+Money not received after cancel or redeem,Product side,16,2.2,10,1.0,1,64.0
+SIP not showing or details not loading,Product side,46,6.4,21,0.24,0,57.0
+Processing or unit allocation delay,Product side,37,5.1,21,0.29,0,47.6
+Status or dashboard: other,Product side,27,3.7,17,0.47,0,39.7
+Other,Product side,13,1.8,5,0.6,0,20.8
+Doubts about trust or timing,Understanding side,11,1.5,6,0.83,0,20.2
+Worried about returns,Market side,13,1.8,5,0.2,0,15.6
+"Returns, XIRR or calculator display",Product side,10,1.4,6,0.17,0,11.7
+"Returns, XIRR or calculator display",Understanding side,9,1.2,7,0.0,0,9.0
+Status or dashboard: other,Understanding side,8,1.1,2,0.0,0,8.0
+Unclear how to cancel or change the SIP,Product side,6,0.8,3,0.0,0,6.0
+Cannot start or set up SIP,Understanding side,5,0.7,1,0.0,0,5.0

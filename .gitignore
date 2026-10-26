@@ -1,0 +1,23 @@
+# Streamlit secrets (NEVER COMMIT)
+.streamlit/secrets.toml
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environments
+.venv/
+env/
+venv/
+ENV/
+
+# IDE & OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

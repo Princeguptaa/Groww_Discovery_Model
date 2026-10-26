@@ -1,0 +1,9 @@
+{
+  "reviews_pulled": 252782,
+  "pulled_english": 250000,
+  "pulled_hindi": 2782,
+  "keyword_matched": 4448,
+  "sip_word_unique": 1809,
+  "note": "Upstream counts from the Colab pull and filter. Later steps (labelled, relevant, trouble) must be computed from labelled_reviews.csv.",
+  "source": "Google Play Store (Groww), India"
+}
