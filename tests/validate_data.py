@@ -126,7 +126,9 @@ def test_opportunity_table_matches_oracle(reviews_df):
     oracle_path = DATA_DIR / "opportunity_table.csv"
     oracle_df = pd.read_csv(oracle_path)
 
-    computed_df = compute_opportunity_table(reviews_df, sort_by="priority_score")
+    computed_df = compute_opportunity_table(
+        reviews_df, sort_by="priority_score", group_by="Theme and cause"
+    )
 
     assert len(computed_df) == 18
     assert len(oracle_df) == 18
@@ -140,4 +142,21 @@ def test_opportunity_table_matches_oracle(reviews_df):
             assert (computed_df[col].round(2) == oracle_df[col].round(2)).all()
         else:
             assert (computed_df[col] == oracle_df[col]).all()
+
+
+def test_opportunity_table_theme_only(reviews_df):
+    """The Opportunities table computed for 'Theme only' for All has 14 rows, and Payment failed or missed has 118 mentions and priority score 424.8."""
+    from lib.compute import compute_opportunity_table
+
+    computed_df = compute_opportunity_table(
+        reviews_df, sort_by="priority_score", group_by="Theme only"
+    )
+
+    assert len(computed_df) == 14
+    pay_row = computed_df[computed_df["theme"] == "Payment failed or missed"].iloc[0]
+    assert pay_row["mentions"] == 118
+    assert round(pay_row["priority_score"], 1) == 424.8
+    assert "causes" in computed_df.columns
+    assert pay_row["causes"] == "Product side 91, Money side 27"
+    assert pay_row["scope"] == "Continuation"
 

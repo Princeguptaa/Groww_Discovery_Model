@@ -22,10 +22,13 @@ from lib.data_loader import load_reviews
 from lib.compute import apply_period_filter, compute_opportunity_table
 
 
-def _go_to_evidence(theme: str, cause: str):
+def _go_to_evidence(theme: str, cause: str = None):
     """Callback to pre-populate Evidence filters and switch navigation."""
     st.session_state["evidence_theme"] = theme
-    st.session_state["evidence_cause"] = cause
+    if cause:
+        st.session_state["evidence_cause"] = cause
+    else:
+        st.session_state.pop("evidence_cause", None)
     st.session_state["nav_radio"] = "Evidence"
 
 
@@ -65,7 +68,7 @@ def render_opportunities():
             
             $$\\text{Priority Score} = \\text{Mentions} \\times (1 + \\text{Lost Rate}) \\times (1 + \\text{Money Flag})$$
             
-            - **Mentions ($n \\ge 5$)**: Number of relevant reviews citing this `(theme, cause)` combination in the active period. Combinations with fewer than 5 mentions are excluded.
+            - **Mentions ($n \\ge 5$)**: Number of relevant reviews citing this group in the active period. Groups with fewer than 5 mentions are excluded.
             - **Share of Relevant (%)**: Percentage of total relevant reviews in this period ($\text{mentions} / n_{\\text{relevant}}$).
             - **Stated Outcomes ($n$)**: Count of reviews in this combination where `outcome_final != 'Unknown'`.
             - **Lost Rate**: Proportion of reviews with stated outcomes that stopped/cancelled, switched away, or stalled not by choice. **Set to 0.0 if stated outcomes $n < 5$**.
@@ -73,21 +76,35 @@ def render_opportunities():
             """
         )
 
-    # 4. Sorting controls
-    sort_choice = st.radio(
-        "Sort Order",
-        options=["Priority Score (descending)", "Mentions (descending)"],
-        horizontal=True,
-        key="opp_sort_toggle",
-    )
+    # 4. Controls: Group by switch and Sorting controls
+    ctrl_col1, ctrl_col2 = st.columns([1, 1])
+    with ctrl_col1:
+        group_by = st.radio(
+            "Group by",
+            options=["Theme only", "Theme and cause"],
+            index=0,
+            horizontal=True,
+            key="opp_group_toggle",
+        )
+    with ctrl_col2:
+        sort_choice = st.radio(
+            "Sort Order",
+            options=["Priority Score (descending)", "Mentions (descending)"],
+            horizontal=True,
+            key="opp_sort_toggle",
+        )
     sort_col = "mentions" if "Mentions" in sort_choice else "priority_score"
 
     # Compute Opportunity Table dynamically at runtime
-    opp_df = compute_opportunity_table(filtered_df, sort_by=sort_col)
+    opp_df = compute_opportunity_table(
+        filtered_df, sort_by=sort_col, group_by=group_by
+    )
 
     if len(opp_df) == 0:
         st.info("No opportunity combinations found with at least 5 mentions for this period slice.")
         return
+
+    is_theme_only = (group_by == "Theme only")
 
     # 5. Top KPI metric cards
     top_score_row = opp_df.sort_values("priority_score", ascending=False).iloc[0]
@@ -97,16 +114,21 @@ def render_opportunities():
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
     with kpi1:
         st.metric(
-            label="Combinations (n ≥ 5)",
+            label="Themes (n ≥ 5)" if is_theme_only else "Combinations (n ≥ 5)",
             value=f"{len(opp_df)}",
-            help="Number of distinct (theme, cause) pairs meeting the 5-mention threshold",
+            help="Number of distinct themes meeting the 5-mention threshold" if is_theme_only else "Number of distinct (theme, cause) pairs meeting the 5-mention threshold",
         )
     with kpi2:
+        top_score_theme = (
+            f"{top_score_row['theme']} (symptom)"
+            if top_score_row["theme"] == "Support not solving"
+            else top_score_row["theme"]
+        )
         st.metric(
             label="Top Priority Opportunity",
             value=f"{top_score_row['priority_score']:.1f}",
-            delta=top_score_row['theme'][:24] + "...",
-            help=f"{top_score_row['theme']} ({top_score_row['cause']})",
+            delta=top_score_theme[:24] + "...",
+            help=top_score_theme if is_theme_only else f"{top_score_theme} ({top_score_row.get('cause', '')})",
         )
     with kpi3:
         top_vol_theme = (
@@ -118,7 +140,7 @@ def render_opportunities():
             label="Top Volume Opportunity",
             value=f"{top_volume_row['mentions']} reviews",
             delta=top_vol_theme[:24] + "...",
-            help=f"{top_vol_theme} ({top_volume_row['cause']})",
+            help=top_vol_theme if is_theme_only else f"{top_vol_theme} ({top_volume_row.get('cause', '')})",
         )
     with kpi4:
         st.metric(
@@ -133,20 +155,22 @@ def render_opportunities():
     st.subheader(f"Priority Table ({current_period})")
 
     # Format dataframe for display
-    # Precompute majority scope per (theme, cause) group from matching reviews
-    scope_lookup = {}
-    rel_reviews = filtered_df[filtered_df["relevant_final"] == "Yes"]
-    for (t, c), grp in rel_reviews.groupby(["theme", "cause"]):
-        norm_scopes = grp["scope"].apply(
-            lambda s: "Entry" if isinstance(s, str) and "Entry" in s else "Continuation"
-        )
-        counts = norm_scopes.value_counts()
-        scope_lookup[(t, c)] = counts.idxmax() if not counts.empty else "Continuation"
-
     display_df = opp_df.copy()
-    display_df["scope"] = display_df.apply(
-        lambda r: scope_lookup.get((r["theme"], r["cause"]), "Continuation"), axis=1
-    )
+
+    # Precompute majority scope if not already present
+    if "scope" not in display_df.columns:
+        scope_lookup = {}
+        rel_reviews = filtered_df[filtered_df["relevant_final"] == "Yes"]
+        for (t, c), grp in rel_reviews.groupby(["theme", "cause"]):
+            norm_scopes = grp["scope"].apply(
+                lambda s: "Entry" if isinstance(s, str) and "Entry" in s else "Continuation"
+            )
+            counts = norm_scopes.value_counts()
+            scope_lookup[(t, c)] = counts.idxmax() if not counts.empty else "Continuation"
+        display_df["scope"] = display_df.apply(
+            lambda r: scope_lookup.get((r["theme"], r["cause"]), "Continuation"), axis=1
+        )
+
     display_df["theme"] = display_df["theme"].apply(
         lambda t: f"{t} (symptom)" if t == "Support not solving" else t
     )
@@ -154,21 +178,42 @@ def render_opportunities():
         lambda f: "💰 Yes (2x)" if f == 1 else "No (1x)"
     )
 
-    st.dataframe(
-        display_df[
-            [
-                "theme",
-                "scope",
-                "cause",
-                "mentions",
-                "share_of_relevant_pct",
-                "n_outcome_known",
-                "lost_rate_among_known",
-                "money_display",
-                "priority_score",
-            ]
-        ],
-        column_config={
+    if is_theme_only:
+        table_columns = [
+            "theme",
+            "scope",
+            "causes",
+            "mentions",
+            "share_of_relevant_pct",
+            "n_outcome_known",
+            "lost_rate_among_known",
+            "money_display",
+            "priority_score",
+        ]
+        col_cfg = {
+            "theme": st.column_config.TextColumn("Theme", width="medium"),
+            "scope": st.column_config.TextColumn("Scope", width="small"),
+            "causes": st.column_config.TextColumn("Causes", width="medium"),
+            "mentions": st.column_config.NumberColumn("Mentions", format="%d"),
+            "share_of_relevant_pct": st.column_config.NumberColumn("Share (%)", format="%.1f%%"),
+            "n_outcome_known": st.column_config.NumberColumn("Stated Outcomes (n)", format="%d"),
+            "lost_rate_among_known": st.column_config.NumberColumn("Lost Rate", format="%.2f"),
+            "money_display": st.column_config.TextColumn("Money Flag", width="small"),
+            "priority_score": st.column_config.NumberColumn("Priority Score", format="%.1f"),
+        }
+    else:
+        table_columns = [
+            "theme",
+            "scope",
+            "cause",
+            "mentions",
+            "share_of_relevant_pct",
+            "n_outcome_known",
+            "lost_rate_among_known",
+            "money_display",
+            "priority_score",
+        ]
+        col_cfg = {
             "theme": st.column_config.TextColumn("Theme", width="medium"),
             "scope": st.column_config.TextColumn("Scope", width="small"),
             "cause": st.column_config.TextColumn("Cause", width="small"),
@@ -178,7 +223,11 @@ def render_opportunities():
             "lost_rate_among_known": st.column_config.NumberColumn("Lost Rate", format="%.2f"),
             "money_display": st.column_config.TextColumn("Money Flag", width="small"),
             "priority_score": st.column_config.NumberColumn("Priority Score", format="%.1f"),
-        },
+        }
+
+    st.dataframe(
+        display_df[table_columns],
+        column_config=col_cfg,
         use_container_width=True,
         hide_index=True,
     )
@@ -190,10 +239,16 @@ def render_opportunities():
 
     d_col1, d_col2 = st.columns([3, 1])
     with d_col1:
-        opp_labels = [
-            f"{row['theme'] + (' (symptom)' if row['theme'] == 'Support not solving' else '')} ({row['cause']}) — Score: {row['priority_score']:.1f} · {row['mentions']} reviews"
-            for _, row in opp_df.iterrows()
-        ]
+        if is_theme_only:
+            opp_labels = [
+                f"{row['theme'] + (' (symptom)' if row['theme'] == 'Support not solving' else '')} — Score: {row['priority_score']:.1f} · {row['mentions']} reviews"
+                for _, row in opp_df.iterrows()
+            ]
+        else:
+            opp_labels = [
+                f"{row['theme'] + (' (symptom)' if row['theme'] == 'Support not solving' else '')} ({row['cause']}) — Score: {row['priority_score']:.1f} · {row['mentions']} reviews"
+                for _, row in opp_df.iterrows()
+            ]
         selected_idx = st.selectbox(
             "Select Opportunity to inspect:",
             range(len(opp_labels)),
@@ -204,11 +259,12 @@ def render_opportunities():
         st.write("")
         st.write("")
         selected_row = opp_df.iloc[selected_idx]
+        selected_cause = None if is_theme_only else selected_row["cause"]
         if st.button(
             "🔍 See these reviews",
             type="primary",
             use_container_width=True,
             on_click=_go_to_evidence,
-            args=(selected_row["theme"], selected_row["cause"]),
+            args=(selected_row["theme"], selected_cause),
         ):
             st.rerun()

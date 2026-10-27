@@ -313,6 +313,16 @@ def test_opportunity_table_computation(full_df):
     assert len(opp_empty) == 0
     assert "priority_score" in opp_empty.columns
 
+    # 6. Group by variations ('Theme only' and 'Theme and cause')
+    df_theme_only = compute_opportunity_table(full_df, group_by="Theme only")
+    assert len(df_theme_only) == 14
+    assert "causes" in df_theme_only.columns
+    assert "scope" in df_theme_only.columns
+
+    df_theme_cause = compute_opportunity_table(full_df, group_by="Theme and cause")
+    assert len(df_theme_cause) == 18
+    assert "cause" in df_theme_cause.columns
+
 
 def test_compute_stats_for_ask(full_df):
     """

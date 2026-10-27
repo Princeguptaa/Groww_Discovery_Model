@@ -371,81 +371,155 @@ def compute_wishes(df: pd.DataFrame) -> Dict[str, Any]:
 
 
 def compute_opportunity_table(
-    df_filtered: pd.DataFrame, sort_by: str = "priority_score"
+    df_filtered: pd.DataFrame,
+    sort_by: str = "priority_score",
+    group_by: str = "Theme only",
 ) -> pd.DataFrame:
     """
     Compute Opportunity priority table at runtime from period-filtered reviews (Spec §7.4).
     
     Formula:
       - Filter to relevant_final == 'Yes' in the active period slice.
-      - Group by (theme, cause).
+      - If group_by == 'Theme only':
+          Group by theme.
+          scope = majority scope of the group.
+          causes = cause count split string (e.g. 'Product side 91, Money side 27').
+          priority_score = mentions * (1 + lost_rate_rounded) * (1 + money_flag), rounded to 1 decimal.
+      - If group_by == 'Theme and cause':
+          Group by (theme, cause).
+          priority_score = mentions * (1 + lost_rate_raw) * (1 + money_flag), rounded to 1 decimal.
       - Exclude groups with mentions < 5.
       - share_of_relevant_pct = (mentions / total_relevant) * 100, rounded to 1 decimal.
       - n_outcome_known = count of rows where outcome_final != 'Unknown'.
       - lost_rate_among_known = (lost_count / n_outcome_known), set to 0.0 if n_outcome_known < 5,
         rounded to 2 decimals.
       - money_flag = 1 if theme in MONEY_FLAG_THEMES else 0.
-      - priority_score = mentions * (1 + lost_rate_raw) * (1 + money_flag), rounded to 1 decimal.
       
     Args:
       df_filtered: Dataframe filtered by active period.
       sort_by: Column to sort descending by ('priority_score' or 'mentions').
+      group_by: Grouping dimension ('Theme only' or 'Theme and cause').
       
     Returns:
       pd.DataFrame with columns:
-        theme, cause, mentions, share_of_relevant_pct, n_outcome_known,
-        lost_rate_among_known, money_flag, priority_score
+        For 'Theme only': theme, scope, causes, mentions, share_of_relevant_pct,
+          n_outcome_known, lost_rate_among_known, money_flag, priority_score
+        For 'Theme and cause': theme, cause, mentions, share_of_relevant_pct,
+          n_outcome_known, lost_rate_among_known, money_flag, priority_score
     """
+    is_theme_only = str(group_by).strip().lower() in ["theme only", "theme", "theme_only"]
+
     rel_df = df_filtered[df_filtered["relevant_final"] == "Yes"]
     total_rel = len(rel_df)
 
     if total_rel == 0:
-        return pd.DataFrame(
-            columns=[
-                "theme",
-                "cause",
-                "mentions",
-                "share_of_relevant_pct",
-                "n_outcome_known",
-                "lost_rate_among_known",
-                "money_flag",
-                "priority_score",
-            ]
-        )
+        if is_theme_only:
+            return pd.DataFrame(
+                columns=[
+                    "theme",
+                    "scope",
+                    "causes",
+                    "Causes",
+                    "mentions",
+                    "share_of_relevant_pct",
+                    "n_outcome_known",
+                    "lost_rate_among_known",
+                    "money_flag",
+                    "priority_score",
+                ]
+            )
+        else:
+            return pd.DataFrame(
+                columns=[
+                    "theme",
+                    "cause",
+                    "mentions",
+                    "share_of_relevant_pct",
+                    "n_outcome_known",
+                    "lost_rate_among_known",
+                    "money_flag",
+                    "priority_score",
+                ]
+            )
 
     rows = []
-    for (theme, cause), group in rel_df.groupby(["theme", "cause"]):
-        mentions = len(group)
-        if mentions < 5:
-            continue
+    if is_theme_only:
+        for theme, group in rel_df.groupby("theme"):
+            mentions = len(group)
+            if mentions < 5:
+                continue
 
-        share_pct = (mentions / total_rel) * 100
-        known = group[group["outcome_final"] != "Unknown"]
-        n_known = len(known)
+            share_pct = (mentions / total_rel) * 100
+            known = group[group["outcome_final"] != "Unknown"]
+            n_known = len(known)
 
-        if n_known < 5:
-            lost_rate_raw = 0.0
-            lost_rate_rounded = 0.0
-        else:
-            lost_count = int(known["outcome_final"].isin(LOST_OUTCOMES).sum())
-            lost_rate_raw = lost_count / n_known
-            lost_rate_rounded = round(lost_rate_raw, 2)
+            if n_known < 5:
+                lost_rate_rounded = 0.0
+            else:
+                lost_count = int(known["outcome_final"].isin(LOST_OUTCOMES).sum())
+                lost_rate_rounded = round(lost_count / n_known, 2)
 
-        money_flag = 1 if theme in MONEY_FLAG_THEMES else 0
-        priority_score_raw = mentions * (1 + lost_rate_raw) * (1 + money_flag)
+            money_flag = 1 if theme in MONEY_FLAG_THEMES else 0
+            priority_score_raw = mentions * (1 + lost_rate_rounded) * (1 + money_flag)
 
-        rows.append(
-            {
-                "theme": theme,
-                "cause": cause,
-                "mentions": mentions,
-                "share_of_relevant_pct": round(share_pct, 1),
-                "n_outcome_known": n_known,
-                "lost_rate_among_known": lost_rate_rounded,
-                "money_flag": money_flag,
-                "priority_score": round(priority_score_raw, 1),
-            }
-        )
+            # Majority scope of the group
+            norm_scopes = group["scope"].apply(
+                lambda s: "Entry" if isinstance(s, str) and "Entry" in s else "Continuation"
+            )
+            scope_counts = norm_scopes.value_counts()
+            majority_scope = scope_counts.idxmax() if not scope_counts.empty else "Continuation"
+
+            # Causes split
+            cause_counts = group["cause"].value_counts()
+            causes_str = ", ".join([f"{c} {cnt}" for c, cnt in cause_counts.items()])
+
+            rows.append(
+                {
+                    "theme": theme,
+                    "scope": majority_scope,
+                    "causes": causes_str,
+                    "Causes": causes_str,
+                    "mentions": mentions,
+                    "share_of_relevant_pct": round(share_pct, 1),
+                    "n_outcome_known": n_known,
+                    "lost_rate_among_known": lost_rate_rounded,
+                    "money_flag": money_flag,
+                    "priority_score": round(priority_score_raw, 1),
+                }
+            )
+    else:
+        for (theme, cause), group in rel_df.groupby(["theme", "cause"]):
+            mentions = len(group)
+            if mentions < 5:
+                continue
+
+            share_pct = (mentions / total_rel) * 100
+            known = group[group["outcome_final"] != "Unknown"]
+            n_known = len(known)
+
+            if n_known < 5:
+                lost_rate_raw = 0.0
+                lost_rate_rounded = 0.0
+            else:
+                lost_count = int(known["outcome_final"].isin(LOST_OUTCOMES).sum())
+                lost_rate_raw = lost_count / n_known
+                lost_rate_rounded = round(lost_rate_raw, 2)
+
+            money_flag = 1 if theme in MONEY_FLAG_THEMES else 0
+            priority_score_raw = mentions * (1 + lost_rate_raw) * (1 + money_flag)
+
+            rows.append(
+                {
+                    "theme": theme,
+                    "cause": cause,
+                    "mentions": mentions,
+                    "share_of_relevant_pct": round(share_pct, 1),
+                    "n_outcome_known": n_known,
+                    "lost_rate_among_known": lost_rate_rounded,
+                    "money_flag": money_flag,
+                    "priority_score": round(priority_score_raw, 1),
+                }
+            )
 
     result_df = pd.DataFrame(rows)
     if len(result_df) == 0:
