@@ -29,6 +29,38 @@ def highlight_evidence(text: str, phrase: str) -> str:
     return escaped_text
 
 
+def highlight_search_terms(text: str, search_query: str, fallback_phrase: str = "") -> str:
+    """
+    Safely highlights matched search words within review text using HTML <mark> tags.
+    Both text and search words are escaped with html.escape() before adding mark tags to prevent XSS.
+    Never uses unescaped text with unsafe_allow_html.
+    - If search_query contains words, each search word appearing in text is highlighted.
+    - If search_query is an exact evidence_id (e.g. E0106) or empty, falls back to fallback_phrase.
+    """
+    escaped_text = html.escape(str(text))
+    q = (search_query or "").strip()
+    if not q:
+        return highlight_evidence(text, fallback_phrase)
+
+    # If query is an exact typed evidence ID (e.g. E0106), check if it appears in text
+    if re.match(r"^E\d{4}$", q, re.IGNORECASE):
+        esc_q = html.escape(q)
+        p = re.compile(re.escape(esc_q), re.IGNORECASE)
+        if p.search(escaped_text):
+            return p.sub(lambda m: f"<mark>{m.group(0)}</mark>", escaped_text)
+        return highlight_evidence(text, fallback_phrase)
+
+    words = list(dict.fromkeys(w.strip() for w in q.split() if w.strip()))
+    if not words:
+        return highlight_evidence(text, fallback_phrase)
+
+    # Sort words by length descending so longer words match first
+    sorted_words = sorted(words, key=len, reverse=True)
+    escaped_words = [re.escape(html.escape(w)) for w in sorted_words]
+    pattern = re.compile("|".join(escaped_words), re.IGNORECASE)
+    return pattern.sub(lambda m: f"<mark>{m.group(0)}</mark>", escaped_text)
+
+
 def sanitize_export(df: pd.DataFrame) -> pd.DataFrame:
     """
     Sanitize dataframe for CSV export.

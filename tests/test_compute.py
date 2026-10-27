@@ -25,6 +25,7 @@ from lib.compute import (
     compute_wishes,
     compute_opportunity_table,
     compute_stats_for_ask,
+    filter_reviews_by_search,
 )
 
 
@@ -325,5 +326,76 @@ def test_compute_stats_for_ask(full_df):
     assert stats["support_count"] > 0
     assert stats["n_outcome_stated"] > 0
     assert stats["lost_count"] > 0
+
+
+def test_evidence_search_expected_counts(full_df):
+    """
+    Search only relevant reviews (relevant_final == 'Yes', 721 rows) in period All.
+    Expected counts:
+      autopay = 25
+      refund = 76
+      support = 81
+      autopay mandate = 2
+      not deducted = 54
+    """
+    rel_df = full_df[full_df["relevant_final"] == "Yes"]
+    assert len(filter_reviews_by_search(rel_df, "autopay")) == 25
+    assert len(filter_reviews_by_search(rel_df, "refund")) == 76
+    assert len(filter_reviews_by_search(rel_df, "support")) == 81
+    assert len(filter_reviews_by_search(rel_df, "autopay mandate")) == 2
+    assert len(filter_reviews_by_search(rel_df, "not deducted")) == 54
+
+
+def test_evidence_search_typed_evidence_id(full_df):
+    """A search for a typed evidence_id returns exactly that row."""
+    rel_df = full_df[full_df["relevant_final"] == "Yes"]
+    res = filter_reviews_by_search(rel_df, "E0106")
+    assert len(res) == 1
+    assert res["evidence_id"].iloc[0] == "E0106"
+
+    # Case-insensitive typed evidence_id
+    res_lower = filter_reviews_by_search(rel_df, "e0106")
+    assert len(res_lower) == 1
+    assert res_lower["evidence_id"].iloc[0] == "E0106"
+
+
+def test_evidence_search_plus_filter_narrows_count(full_df):
+    """Search plus a filter narrows the count."""
+    rel_df = full_df[full_df["relevant_final"] == "Yes"]
+    search_res = filter_reviews_by_search(rel_df, "autopay")
+    assert len(search_res) == 25
+
+    # Filter by period narrows count
+    narrowed_by_period = search_res[search_res["period"] == PERIOD_AFTER]
+    assert 0 < len(narrowed_by_period) < len(search_res)
+
+    # Filter by theme narrows count
+    narrowed_by_theme = search_res[search_res["theme"] == "Cannot start or set up SIP"]
+    assert 0 < len(narrowed_by_theme) < len(search_res)
+
+
+def test_evidence_search_clearing_restores_count(full_df):
+    """Clearing the search restores the count."""
+    rel_df = full_df[full_df["relevant_final"] == "Yes"]
+    total_rel = len(rel_df)
+
+    searched = filter_reviews_by_search(rel_df, "autopay")
+    assert len(searched) == 25
+
+    # Clearing with empty string restores count
+    cleared_empty = filter_reviews_by_search(rel_df, "")
+    assert len(cleared_empty) == total_rel
+
+    # Clearing with whitespace restores count
+    cleared_spaces = filter_reviews_by_search(rel_df, "   ")
+    assert len(cleared_spaces) == total_rel
+
+
+def test_evidence_search_xss_escaped_safely(full_df):
+    """A search query containing <script> executes safely and returns 0 rows without error."""
+    rel_df = full_df[full_df["relevant_final"] == "Yes"]
+    res = filter_reviews_by_search(rel_df, "<script>")
+    assert len(res) == 0
+
 
 

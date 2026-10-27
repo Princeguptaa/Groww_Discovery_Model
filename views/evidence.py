@@ -14,7 +14,8 @@ from typing import List, Set
 import streamlit as st
 import pandas as pd
 from lib.data_loader import load_reviews
-from lib.privacy import highlight_evidence, sanitize_export
+from lib.privacy import highlight_evidence, highlight_search_terms, sanitize_export
+from lib.compute import filter_reviews_by_search
 from lib.constants import (
     PERIOD_ALL,
     PERIOD_BEFORE,
@@ -41,7 +42,23 @@ def render_evidence():
     st.title("Evidence Browser")
     st.caption("Inspect primary review quotes, AI classifications, and stated outcomes with verified safety filters.")
 
-    df = load_reviews()
+    # Search box at the top of Evidence
+    search_query = st.text_input(
+        "Search reviews (for example: autopay, refund, not deducted)",
+        key="evidence_search_input",
+    )
+
+    # Reset to page 1 whenever a new search is typed
+    if "prev_evidence_search" not in st.session_state:
+        st.session_state["prev_evidence_search"] = ""
+
+    if search_query != st.session_state["prev_evidence_search"]:
+        st.session_state["evidence_page"] = 1
+        st.session_state["prev_evidence_search"] = search_query
+
+    # Search only relevant reviews (relevant_final == 'Yes')
+    raw_df = load_reviews()
+    df = raw_df[raw_df["relevant_final"] == "Yes"].copy()
     total_rows = len(df)
 
     # Inbound filter consumption from other screens (e.g., Journey or Opportunities)
@@ -150,6 +167,10 @@ def render_evidence():
             return any(w in tokens for w in f_workarounds)
         filtered_df = filtered_df[filtered_df["workarounds"].apply(match_workarounds)]
 
+    # 11. Search filter
+    if search_query and search_query.strip():
+        filtered_df = filter_reviews_by_search(filtered_df, search_query)
+
     n_filtered = len(filtered_df)
 
     # Header counter & CSV Export (Spec §7.5)
@@ -157,7 +178,7 @@ def render_evidence():
     with cnt_col:
         st.markdown(f"### Showing **{n_filtered:,}** of {total_rows:,} reviews")
     with dl_col:
-# Sanitized CSV export omitting unverified model metrics
+        # Sanitized CSV export omitting unverified model metrics
         export_df = sanitize_export(filtered_df)
         csv_bytes = export_df.to_csv(index=False).encode("utf-8")
         st.download_button(
@@ -168,7 +189,7 @@ def render_evidence():
         )
 
     if n_filtered == 0:
-        st.warning("No reviews match the selected filter combination. Adjust filters above to expand results.")
+        st.warning("No reviews match. Try fewer words or clear a filter.")
         return
 
     # Pagination: 25 rows per page (Spec §7.5)
@@ -224,8 +245,8 @@ def render_evidence():
         else:
             scope_badge = '<span style="background: #E0E7FF; color: #3730A3; font-weight: 600; padding: 2px 8px; border-radius: 4px; font-size: 11px;">Continuation</span>'
 
-        # Highlight evidence safely
-        highlighted_body = highlight_evidence(raw_text, evidence_phrase)
+        # Highlight evidence and search words safely
+        highlighted_body = highlight_search_terms(raw_text, search_query, fallback_phrase=evidence_phrase)
 
         st.markdown(
             f"""

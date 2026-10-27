@@ -7,6 +7,7 @@ No reference numbers are hardcoded here.
 """
 
 from typing import Dict, Any, List
+import re
 import pandas as pd
 from lib.constants import (
     PERIOD_ALL,
@@ -529,5 +530,34 @@ def compute_stats_for_ask(df: pd.DataFrame) -> Dict[str, Any]:
         "outcomes": rel_df["outcome_final"].value_counts().to_dict(),
         "hypotheses": rel_df["hypothesis_final"].value_counts().to_dict(),
     }
+
+
+def filter_reviews_by_search(df: pd.DataFrame, query: str) -> pd.DataFrame:
+    """
+    Filter reviews by search query.
+    - If query is empty or whitespace, returns df unchanged.
+    - If query matches an evidence_id exactly (e.g. E0106, case-insensitive), returns that row.
+    - If several words, ALL words must appear in review text (case-insensitive).
+    """
+    if not query or not str(query).strip():
+        return df
+
+    q = str(query).strip()
+
+    # Exact typed evidence_id match (e.g. E0106)
+    if re.match(r"^E\d{4}$", q, re.IGNORECASE):
+        return df[df["evidence_id"].str.upper() == q.upper()]
+
+    # Several words: ALL words must appear in review text (case-insensitive)
+    words = [w.lower() for w in q.split() if w]
+    if not words:
+        return df
+
+    def _matches_all(text: Any) -> bool:
+        t = str(text).lower()
+        return all(w in t for w in words)
+
+    return df[df["text"].apply(_matches_all)]
+
 
 

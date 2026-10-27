@@ -7,6 +7,7 @@ CSV export sanitization (omitting unverified model columns), and ID validation.
 import pandas as pd
 from lib.privacy import (
     highlight_evidence,
+    highlight_search_terms,
     sanitize_export,
     is_valid_evidence_id,
 )
@@ -71,3 +72,29 @@ def test_is_valid_evidence_id():
     assert is_valid_evidence_id("E12") is False
     assert is_valid_evidence_id("NOT_IN_MAIN_DATA") is False
     assert is_valid_evidence_id(123) is False
+
+
+def test_highlight_search_terms_xss_safety():
+    """A search for <script> is escaped safely."""
+    malicious_text = "<script>alert('hack')</script> SIP failed"
+    result = highlight_search_terms(malicious_text, "<script>")
+    # Ensure raw script tags are strictly escaped and wrapped in mark
+    assert "<script>" not in result
+    assert "&lt;script&gt;" in result
+    assert "<mark>&lt;script&gt;</mark>" in result
+
+
+def test_highlight_search_terms_multi_words():
+    """Multiple search words are all highlighted with mark tags."""
+    text = "Autopay was debited but the mandate was cancelled"
+    result = highlight_search_terms(text, "autopay mandate")
+    assert "<mark>Autopay</mark>" in result
+    assert "<mark>mandate</mark>" in result
+
+
+def test_highlight_search_terms_empty_query():
+    """Empty search falls back to evidence phrase or unhighlighted escaped text."""
+    text = "Review text without search"
+    assert "<mark>" not in highlight_search_terms(text, "")
+    assert "<mark>text</mark>" in highlight_search_terms(text, "", fallback_phrase="text")
+
