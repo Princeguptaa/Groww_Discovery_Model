@@ -109,11 +109,16 @@ def render_opportunities():
             help=f"{top_score_row['theme']} ({top_score_row['cause']})",
         )
     with kpi3:
+        top_vol_theme = (
+            f"{top_volume_row['theme']} (symptom)"
+            if top_volume_row["theme"] == "Support not solving"
+            else top_volume_row["theme"]
+        )
         st.metric(
             label="Top Volume Opportunity",
             value=f"{top_volume_row['mentions']} reviews",
-            delta=top_volume_row['theme'][:24] + "...",
-            help=f"{top_volume_row['theme']} ({top_volume_row['cause']})",
+            delta=top_vol_theme[:24] + "...",
+            help=f"{top_vol_theme} ({top_volume_row['cause']})",
         )
     with kpi4:
         st.metric(
@@ -128,7 +133,23 @@ def render_opportunities():
     st.subheader(f"Priority Table ({current_period})")
 
     # Format dataframe for display
+    # Precompute majority scope per (theme, cause) group from matching reviews
+    scope_lookup = {}
+    rel_reviews = filtered_df[filtered_df["relevant_final"] == "Yes"]
+    for (t, c), grp in rel_reviews.groupby(["theme", "cause"]):
+        norm_scopes = grp["scope"].apply(
+            lambda s: "Entry" if isinstance(s, str) and "Entry" in s else "Continuation"
+        )
+        counts = norm_scopes.value_counts()
+        scope_lookup[(t, c)] = counts.idxmax() if not counts.empty else "Continuation"
+
     display_df = opp_df.copy()
+    display_df["scope"] = display_df.apply(
+        lambda r: scope_lookup.get((r["theme"], r["cause"]), "Continuation"), axis=1
+    )
+    display_df["theme"] = display_df["theme"].apply(
+        lambda t: f"{t} (symptom)" if t == "Support not solving" else t
+    )
     display_df["money_display"] = display_df["money_flag"].apply(
         lambda f: "💰 Yes (2x)" if f == 1 else "No (1x)"
     )
@@ -137,6 +158,7 @@ def render_opportunities():
         display_df[
             [
                 "theme",
+                "scope",
                 "cause",
                 "mentions",
                 "share_of_relevant_pct",
@@ -147,7 +169,8 @@ def render_opportunities():
             ]
         ],
         column_config={
-            "theme": st.column_config.TextColumn("Continuation Theme", width="medium"),
+            "theme": st.column_config.TextColumn("Theme", width="medium"),
+            "scope": st.column_config.TextColumn("Scope", width="small"),
             "cause": st.column_config.TextColumn("Cause", width="small"),
             "mentions": st.column_config.NumberColumn("Mentions", format="%d"),
             "share_of_relevant_pct": st.column_config.NumberColumn("Share (%)", format="%.1f%%"),
@@ -168,7 +191,7 @@ def render_opportunities():
     d_col1, d_col2 = st.columns([3, 1])
     with d_col1:
         opp_labels = [
-            f"{row['theme']} ({row['cause']}) — Score: {row['priority_score']:.1f} · {row['mentions']} reviews"
+            f"{row['theme'] + (' (symptom)' if row['theme'] == 'Support not solving' else '')} ({row['cause']}) — Score: {row['priority_score']:.1f} · {row['mentions']} reviews"
             for _, row in opp_df.iterrows()
         ]
         selected_idx = st.selectbox(

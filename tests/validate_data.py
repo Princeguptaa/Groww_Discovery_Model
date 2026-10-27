@@ -128,6 +128,8 @@ def test_opportunity_table_matches_oracle(reviews_df):
 
     computed_df = compute_opportunity_table(reviews_df, sort_by="priority_score")
 
+    assert len(computed_df) == 18
+    assert len(oracle_df) == 18
     assert len(computed_df) == len(oracle_df)
     assert list(computed_df.columns) == list(oracle_df.columns)
 
