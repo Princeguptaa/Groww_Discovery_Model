@@ -10,7 +10,7 @@ The tool surfaces continuation friction from Play Store customer reviews, combin
 
 The application is deployed on Streamlit Community Cloud:
 
-🔗 **Live Link**: [https://princeguptaa-groww-discovery-model-app-dsac81.streamlit.app/](https://princeguptaa-groww-discovery-model-app-dsac81.streamlit.app/)
+🔗 **Live Link**: [https://groww-sip-discovery-engine.streamlit.app/](https://groww-sip-discovery-engine.streamlit.app/)
 
 ---
 
