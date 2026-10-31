@@ -139,9 +139,6 @@ def render_overview():
                 <div style="font-size: 14px; color: #334155;">
                     <b>{findings['top_cause']['count']:,}</b> occurrences ({findings['top_cause']['pct']}% of relevant reviews)
                 </div>
-                <div style="font-size: 14px; color: #64748B; margin-top: 10px;">
-                    Primary structural driver identified across user complaints in this period.
-                </div>
             </div>
             """,
             unsafe_allow_html=True,

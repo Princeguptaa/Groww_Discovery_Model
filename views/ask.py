@@ -8,6 +8,7 @@ Displays:
 5. Rate-limiting monitoring and seamless fallback mode
 """
 
+import html
 import re
 from typing import Tuple, Set
 import streamlit as st
@@ -15,7 +16,10 @@ import pandas as pd
 from lib.data_loader import load_reviews
 from lib.ai_client import call_ai_ask, MAX_SESSION_CALLS
 from lib.compute import compute_stats_for_ask
-from lib.fallback_examples import ASK_DATA_FALLBACKS
+from lib.fallback_examples import (
+    ASK_DATA_FALLBACKS,
+    check_ask_query_scope,
+)
 
 SUGGESTED_QUESTIONS = [
     "What are the most common reasons people say their SIP failed or was missed?",
@@ -25,6 +29,28 @@ SUGGESTED_QUESTIONS = [
     "What do users ask for that Groww does not offer yet?",
     "How many reviews mention skipping, pausing or editing a SIP, and what do they say?",
 ]
+
+
+def _set_suggested_query(q_text: str):
+    """Callback for suggested question buttons to directly update the text input key."""
+    st.session_state["ask_query_input"] = q_text
+
+
+def format_answer_html(answer: str) -> str:
+    """
+    Escapes the answer with html.escape before putting it in the page,
+    then turns [E####] citations and line breaks into safe markup after escaping.
+    """
+    safe = html.escape(answer)
+    # Turn [E####] or [E####, E####] citations into safe styled tags
+    safe = re.sub(
+        r'\[(E\d{4}(?:,\s*E\d{4})*)\]',
+        r'<span style="background: #E2E8F0; color: #0F172A; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-weight: 600;">[\1]</span>',
+        safe,
+    )
+    # Turn line breaks into safe <br> tags
+    safe = safe.replace("\n", "<br>")
+    return safe
 
 
 def _build_stats_block(df: pd.DataFrame) -> Tuple[str, dict]:
@@ -82,28 +108,26 @@ def render_ask():
 
     df = load_reviews()
 
+    # Initialize session state for text input if not present
+    if "ask_query_input" not in st.session_state:
+        st.session_state["ask_query_input"] = SUGGESTED_QUESTIONS[0]
+
     # Suggested Questions (Spec §7.6)
     st.markdown("**Suggested Discovery Questions:**")
     q_cols = st.columns(2)
     
-    selected_question = None
     for idx, q_text in enumerate(SUGGESTED_QUESTIONS):
         col = q_cols[idx % 2]
         with col:
-            if st.button(f"💡 {q_text}", key=f"q_btn_{idx}"):
-                selected_question = q_text
-
-    if selected_question:
-        st.session_state["ask_input_text"] = selected_question
-
-    current_query = st.session_state.get(
-        "ask_input_text",
-        SUGGESTED_QUESTIONS[0],
-    )
+            st.button(
+                f"💡 {q_text}",
+                key=f"q_btn_{idx}",
+                on_click=_set_suggested_query,
+                args=(q_text,),
+            )
 
     user_query = st.text_input(
         "Enter your question regarding SIP discontinuation:",
-        value=current_query,
         key="ask_query_input",
     )
 
@@ -113,12 +137,19 @@ def render_ask():
             st.error("Please enter a question.")
             return
 
-        with st.spinner("Synthesizing answer from verified evidence quotes and stats..."):
-            stats_block, stats_dict = _build_stats_block(df)
-            examples_block, allowed_ids = _get_context_examples(df, clean_query)
-            answer, is_live, msg = call_ai_ask(
-                clean_query, stats_block, examples_block, allowed_ids, stats_dict=stats_dict
-            )
+        # Scope check before any live or fallback call (Requirement 5)
+        declined_msg = check_ask_query_scope(clean_query)
+        if declined_msg:
+            answer = declined_msg
+            is_live = False
+            msg = "Question is outside tool scope."
+        else:
+            with st.spinner("Synthesizing answer from verified evidence quotes and stats..."):
+                stats_block, stats_dict = _build_stats_block(df)
+                examples_block, allowed_ids = _get_context_examples(df, clean_query)
+                answer, is_live, msg = call_ai_ask(
+                    clean_query, stats_block, examples_block, allowed_ids, stats_dict=stats_dict
+                )
 
         if is_live:
             st.success(msg)
@@ -126,10 +157,11 @@ def render_ask():
             st.info(f"ℹ️ {msg}")
 
         st.markdown("### Answer")
+        safe_markup = format_answer_html(answer)
         st.markdown(
             f"""
             <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 18px; background: #F8FAFC; line-height: 1.6; font-size: 15px; color: #0F172A;">
-                {answer}
+                {safe_markup}
             </div>
             """,
             unsafe_allow_html=True,

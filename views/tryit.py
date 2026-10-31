@@ -11,7 +11,7 @@ Displays:
 import streamlit as st
 from lib.ai_client import call_ai_label, MAX_SESSION_CALLS
 from lib.labeller import evaluate_quality_gate
-from lib.fallback_examples import TRYIT_FALLBACKS
+from lib.fallback_examples import TRYIT_FALLBACKS, get_tryit_fallback
 from lib.constants import TRYIT_WARNING, HYPOTHESIS_NOTE
 
 
@@ -67,11 +67,17 @@ def render_tryit():
         with st.spinner("Classifying review with taxonomy and post-rules..."):
             labels, is_live, msg = call_ai_label(clean_input)
 
-        # Status notification
-        if is_live:
-            st.success(msg)
+        if not is_live:
+            # Clear banner (Requirement 2): Never show labels for user's text
+            st.warning("⚠️ **AI is unavailable. This is a saved example, NOT the analysis of your text**")
+            sample_data = get_tryit_fallback(user_text=clean_input)
+            sample_text = sample_data["text"]
+            labels = sample_data["labels"]
+            eval_text = sample_text
         else:
-            st.info(f"ℹ️ {msg}")
+            st.success(msg)
+            sample_text = None
+            eval_text = clean_input
 
         # Broad tag rewrite for Try It (Spec §7.7)
         displayed_issue = labels.get("issue", "")
@@ -79,7 +85,7 @@ def render_tryit():
             displayed_issue = "Status or dashboard (broad tag, not split in Try it)"
 
         # Quality Gate Evaluation (Spec §7.7)
-        gate = evaluate_quality_gate(labels, clean_input)
+        gate = evaluate_quality_gate(labels, eval_text)
         if gate["type"] == "success":
             st.success(f"**Quality Gate:** {gate['status']} — {gate['reason']}")
         elif gate["type"] == "warning":
@@ -89,45 +95,81 @@ def render_tryit():
 
         st.markdown("### Classification Results")
 
-        r_col1, r_col2, r_col3 = st.columns(3)
-        with r_col1:
-            st.markdown(
-                f"""
-                <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px; background: #F8FAFC;">
-                    <div style="font-size: 14px; font-weight: 700; color: #64748B;">RELEVANCE & STAGE</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #0F172A; margin: 4px 0;">{labels.get('relevant_final', 'No')}</div>
-                    <div style="font-size: 14px; color: #334155;"><b>Raw:</b> {labels.get('relevant', 'No')}</div>
-                    <div style="font-size: 14px; color: #334155;"><b>Stage:</b> {labels.get('stage', 'Not clear')}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+        if not is_live and sample_text:
+            col_sample, col_labels = st.columns([1, 1])
+            with col_sample:
+                st.markdown("#### Saved Sample Review Text")
+                st.markdown(
+                    f"""
+                    <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 16px; background: #F8FAFC; font-size: 14px; line-height: 1.6; color: #0F172A;">
+                        <div style="font-size: 12px; font-weight: 700; color: #64748B; margin-bottom: 8px;">SAMPLE TEXT DISPLAYED:</div>
+                        <i>"{sample_text}"</i>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            with col_labels:
+                st.markdown("#### Sample Classification Labels")
+                st.markdown(
+                    f"""
+                    <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px; background: #F8FAFC; margin-bottom: 8px;">
+                        <div style="font-size: 13px; font-weight: 700; color: #64748B;">RELEVANCE & STAGE</div>
+                        <div style="font-size: 15px; font-weight: 700; color: #0F172A;">{labels.get('relevant_final', 'No')} (Raw: {labels.get('relevant', 'No')})</div>
+                        <div style="font-size: 13px; color: #334155;">Stage: {labels.get('stage', 'Not clear')}</div>
+                    </div>
+                    <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px; background: #F8FAFC; margin-bottom: 8px;">
+                        <div style="font-size: 13px; font-weight: 700; color: #64748B;">FRICTION & CAUSE</div>
+                        <div style="font-size: 15px; font-weight: 700; color: #0F172A;">{displayed_issue}</div>
+                        <div style="font-size: 13px; color: #334155;">Cause: {labels.get('cause', 'Not clear')} | Break Type: {labels.get('break_type', 'Not stated')}</div>
+                    </div>
+                    <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px; background: #F8FAFC;">
+                        <div style="font-size: 13px; font-weight: 700; color: #64748B;">OUTCOME & HYPOTHESIS</div>
+                        <div style="font-size: 15px; font-weight: 700; color: #0F172A;">{labels.get('outcome_final', 'Unknown')}</div>
+                        <div style="font-size: 13px; color: #334155;">Hypothesis: {labels.get('hypothesis_final', 'None')} (directional)</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+        else:
+            r_col1, r_col2, r_col3 = st.columns(3)
+            with r_col1:
+                st.markdown(
+                    f"""
+                    <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px; background: #F8FAFC;">
+                        <div style="font-size: 14px; font-weight: 700; color: #64748B;">RELEVANCE & STAGE</div>
+                        <div style="font-size: 16px; font-weight: 700; color: #0F172A; margin: 4px 0;">{labels.get('relevant_final', 'No')}</div>
+                        <div style="font-size: 14px; color: #334155;"><b>Raw:</b> {labels.get('relevant', 'No')}</div>
+                        <div style="font-size: 14px; color: #334155;"><b>Stage:</b> {labels.get('stage', 'Not clear')}</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
-        with r_col2:
-            st.markdown(
-                f"""
-                <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px; background: #F8FAFC;">
-                    <div style="font-size: 14px; font-weight: 700; color: #64748B;">FRICTION & CAUSE</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #0F172A; margin: 4px 0;">{displayed_issue}</div>
-                    <div style="font-size: 14px; color: #334155;"><b>Cause:</b> {labels.get('cause', 'Not clear')}</div>
-                    <div style="font-size: 14px; color: #334155;"><b>Break Type:</b> {labels.get('break_type', 'Not stated')}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            with r_col2:
+                st.markdown(
+                    f"""
+                    <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px; background: #F8FAFC;">
+                        <div style="font-size: 14px; font-weight: 700; color: #64748B;">FRICTION & CAUSE</div>
+                        <div style="font-size: 16px; font-weight: 700; color: #0F172A; margin: 4px 0;">{displayed_issue}</div>
+                        <div style="font-size: 14px; color: #334155;"><b>Cause:</b> {labels.get('cause', 'Not clear')}</div>
+                        <div style="font-size: 14px; color: #334155;"><b>Break Type:</b> {labels.get('break_type', 'Not stated')}</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
-        with r_col3:
-            st.markdown(
-                f"""
-                <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px; background: #F8FAFC;">
-                    <div style="font-size: 14px; font-weight: 700; color: #64748B;">OUTCOME & HYPOTHESIS</div>
-                    <div style="font-size: 16px; font-weight: 700; color: #0F172A; margin: 4px 0;">{labels.get('outcome_final', 'Unknown')}</div>
-                    <div style="font-size: 14px; color: #334155;"><b>Raw Outcome:</b> {labels.get('outcome', 'Unknown')}</div>
-                    <div style="font-size: 14px; color: #334155;"><b>Hypothesis:</b> {labels.get('hypothesis_final', 'None')} (directional)</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            with r_col3:
+                st.markdown(
+                    f"""
+                    <div style="border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px; background: #F8FAFC;">
+                        <div style="font-size: 14px; font-weight: 700; color: #64748B;">OUTCOME & HYPOTHESIS</div>
+                        <div style="font-size: 16px; font-weight: 700; color: #0F172A; margin: 4px 0;">{labels.get('outcome_final', 'Unknown')}</div>
+                        <div style="font-size: 14px; color: #334155;"><b>Raw Outcome:</b> {labels.get('outcome', 'Unknown')}</div>
+                        <div style="font-size: 14px; color: #334155;"><b>Hypothesis:</b> {labels.get('hypothesis_final', 'None')} (directional)</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
         st.markdown(
             f"""
@@ -147,3 +189,4 @@ def render_tryit():
             """,
             unsafe_allow_html=True,
         )
+

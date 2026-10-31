@@ -82,7 +82,7 @@ def render_method():
             <div style="border: 1px solid #CBD5E1; border-radius: 6px; padding: 10px; background: #F8FAFC;">
                 <div style="font-size: 14px; font-weight: 700; color: #64748B;">STEP 4: CHECK</div>
                 <div style="font-size: 16px; font-weight: 700; color: #0F172A; margin: 4px 0;">70 Audited</div>
-                <div style="font-size: 14px; color: #475569;">30 human golden rows + 40 second-model audits.</div>
+                <div style="font-size: 14px; color: #475569;">30 reviews labelled by the researcher: the first list was drafted with AI help, then every label was reviewed and confirmed or changed + 40 second-model audits.</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -104,7 +104,7 @@ def render_method():
     # 2. Golden Set Benchmark (Spec §7.8)
     st.subheader("2. Human Golden-Set Benchmark (30 Reviews)")
     st.caption(
-        "Benchmarked against 30 reviews labelled independently by hand. "
+        "Benchmarked against 30 reviews labelled by the researcher: the first list was drafted with AI help, then every label was reviewed and confirmed or changed. "
         "Includes 8 reviews (evidence_id = NOT_IN_MAIN_DATA) that lack the word 'SIP' but possess valid continuation labels. "
         "Stage, issue, and cause agreement are evaluated strictly on rows where Human Benchmark = 'Yes' (9 reviews)."
     )
@@ -237,6 +237,7 @@ def render_method():
     st.markdown(
         f"""
         - **Play Store Source Only:** Findings reflect only public app store reviews, not private support tickets, emails, or call logs.
+        - **Golden Set Origin:** The golden set started from an AI-drafted list, so it is not fully independent of AI.
         - **1-Star Negative Rating Skew:** Reviews with continuation problems skew heavily negative (67% one-star vs 30% across all SIP reviews). Mentions reflect patterns of friction, not total population prevalence.
         - **Language Distribution:** Primarily English with approximately 10% Hinglish and 2% Devanagari script reviews.
         - **Missing Demographic Signals:** Reviewers almost never disclose income ({missing_income_count} of {total_relevant:,} relevant reviews) or whether they are first-time investors; user segmentation requires separate survey research.

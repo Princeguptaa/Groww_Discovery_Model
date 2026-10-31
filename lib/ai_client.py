@@ -16,7 +16,11 @@ from typing import Dict, Any, Tuple, Optional
 import streamlit as st
 from google import genai
 from google.genai import types
-from lib.fallback_examples import get_tryit_fallback, get_ask_fallback
+from lib.fallback_examples import (
+    get_tryit_fallback,
+    get_ask_fallback,
+    check_ask_query_scope,
+)
 from lib.labeller import LABEL_PROMPT, normalise, apply_post_rules
 
 # Constants
@@ -109,7 +113,7 @@ def call_ai_label(review_text: str) -> Tuple[Dict[str, Any], bool, str]:
     """
     api_key = get_gemini_api_key()
     if not api_key:
-        fallback = get_tryit_fallback()
+        fallback = get_tryit_fallback(user_text=review_text)
         return (
             fallback["labels"],
             False,
@@ -119,7 +123,7 @@ def call_ai_label(review_text: str) -> Tuple[Dict[str, Any], bool, str]:
     # Check session limit
     session_calls = st.session_state.get("ai_call_count", 0)
     if session_calls >= MAX_SESSION_CALLS:
-        fallback = get_tryit_fallback()
+        fallback = get_tryit_fallback(user_text=review_text)
         return (
             fallback["labels"],
             False,
@@ -129,7 +133,7 @@ def call_ai_label(review_text: str) -> Tuple[Dict[str, Any], bool, str]:
     # Check daily limit
     tracker = get_daily_tracker()
     if tracker.get_count() >= MAX_DAILY_CALLS:
-        fallback = get_tryit_fallback()
+        fallback = get_tryit_fallback(user_text=review_text)
         return (
             fallback["labels"],
             False,
@@ -167,7 +171,7 @@ def call_ai_label(review_text: str) -> Tuple[Dict[str, Any], bool, str]:
             continue
 
     # Fallback if all models failed
-    fallback = get_tryit_fallback()
+    fallback = get_tryit_fallback(user_text=review_text)
     return (
         fallback["labels"],
         False,
@@ -188,14 +192,6 @@ def call_ai_ask(
     Returns:
       (answer_text, is_live_call, status_message)
     """
-    api_key = get_gemini_api_key()
-    if not api_key:
-        return (
-            get_ask_fallback(question, stats_dict),
-            False,
-            "Saved answer displayed (Gemini API key not configured in secrets).",
-        )
-
     session_calls = st.session_state.get("ai_call_count", 0)
     if session_calls >= MAX_SESSION_CALLS:
         return (
@@ -210,6 +206,18 @@ def call_ai_ask(
             get_ask_fallback(question, stats_dict),
             False,
             f"Global daily cap reached ({MAX_DAILY_CALLS} calls). Showing saved answer.",
+        )
+
+    scope_declined = check_ask_query_scope(question)
+    if scope_declined:
+        return (scope_declined, False, "Question is outside tool scope.")
+
+    api_key = get_gemini_api_key()
+    if not api_key:
+        return (
+            get_ask_fallback(question, stats_dict),
+            False,
+            "Saved answer displayed (Gemini API key not configured in secrets).",
         )
 
     prompt = f"""You answer questions about why first-time investors stop or fail to continue mutual fund SIPs on Groww.

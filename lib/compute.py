@@ -57,7 +57,7 @@ def compute_funnel(df: pd.DataFrame, funnel_inputs: Dict[str, Any]) -> List[Dict
             "step_id": 1,
             "name": "Reviews pulled",
             "count": int(funnel_inputs.get("reviews_pulled", 0)),
-            "source": "App Store extraction",
+            "source": "Play Store reviews pulled",
         },
         {
             "step_id": 2,
@@ -581,6 +581,18 @@ def compute_stats_for_ask(df: pd.DataFrame) -> Dict[str, Any]:
     money_delay_count = int(theme_counts.get("Processing or unit allocation delay", 0))
     money_debited_cancel_count = int(theme_counts.get("Debited after cancel or wrong amount", 0))
 
+    pay_fail_ids = rel_df[rel_df["theme"] == "Payment failed or missed"]["evidence_id"].tolist()[:2]
+    support_ids = rel_df[rel_df["theme"] == "Support not solving"]["evidence_id"].tolist()[:2]
+    cannot_edit_ids = rel_df[rel_df["theme"] == "Cannot edit or pause or stop"]["evidence_id"].tolist()[:2]
+    money_delay_ids = rel_df[rel_df["theme"] == "Processing or unit allocation delay"]["evidence_id"].tolist()[:2]
+    money_debited_cancel_ids = rel_df[rel_df["theme"] == "Debited after cancel or wrong amount"]["evidence_id"].tolist()[:2]
+    before_pay_fail_ids = rel_df[
+        (rel_df["period"] == PERIOD_BEFORE) & (rel_df["theme"] == "Payment failed or missed")
+    ]["evidence_id"].tolist()[:2]
+    after_cannot_edit_ids = rel_df[
+        (rel_df["period"] == PERIOD_AFTER) & (rel_df["theme"] == "Cannot edit or pause or stop")
+    ]["evidence_id"].tolist()[:2]
+
     return {
         "n_relevant": n_relevant,
         "wishes_total": wishes_total,
@@ -599,6 +611,13 @@ def compute_stats_for_ask(df: pd.DataFrame) -> Dict[str, Any]:
         "controls": controls,
         "money_delay_count": money_delay_count,
         "money_debited_cancel_count": money_debited_cancel_count,
+        "pay_fail_ids": pay_fail_ids,
+        "support_ids": support_ids,
+        "cannot_edit_ids": cannot_edit_ids,
+        "money_delay_ids": money_delay_ids,
+        "money_debited_cancel_ids": money_debited_cancel_ids,
+        "before_pay_fail_ids": before_pay_fail_ids,
+        "after_cannot_edit_ids": after_cannot_edit_ids,
         "period_dist": rel_df["period"].value_counts().to_dict(),
         "break_types": rel_df["break_type"].value_counts().to_dict(),
         "outcomes": rel_df["outcome_final"].value_counts().to_dict(),
